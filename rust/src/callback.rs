@@ -7,7 +7,7 @@ use teloxide::{
    prelude::*,
    types::{CallbackQuery, },
 };
-use crate::states::*;
+use crate::{db, navigation, states::*};
 // use crate::database as db;
 // use crate::navigation;
 // use crate::registration;
@@ -88,7 +88,7 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
       let user_id = q.from.id.0;
     //   db::orders_amount_inc(user_id, node_id).await?;
       navigation::view(bot, q, node_id, mode, tag).await?;
-      Ok(loc(Key::CallbackAdded, tag, &[]))
+      Ok(loc("Added"))
    }
 
    async fn do_dec(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag: LocaleTag) -> Result<String, String> {
@@ -96,7 +96,7 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
       let user_id = q.from.id.0;
       db::orders_amount_dec(user_id, node_id).await?;
       navigation::view(bot, q, node_id, mode, tag).await?;
-      Ok(loc(Key::CallbackRemoved, tag, &[]))
+      Ok(loc("Removed"))
    }
 
    let query_id = q.id.to_owned();
@@ -107,21 +107,22 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
    let msg = match cmd {
       Command::Pass(node_id) => {
          navigation::view(&bot, q, node_id, WorkTime::All, tag).await?;
-         loc(Key::CallbackAll, tag, &[])
+         loc("All places")
       }
       Command::PassNow(node_id) => {
          navigation::view(&bot, q, node_id, WorkTime::Now, tag).await?;
-         loc(Key::CallbackOpen, tag, &[])
+         loc("Open now")
       }
       Command::IncAmount(node_id) => do_inc(&bot, q, node_id, WorkTime::All, tag).await?,
       Command::IncAmountNow(node_id) => do_inc(&bot, q, node_id, WorkTime::Now, tag).await?,
       Command::DecAmount(node_id) => do_dec(&bot, q, node_id, WorkTime::All, tag).await?,
       Command::DecAmountNow(node_id) => do_dec(&bot, q, node_id, WorkTime::All, tag).await?,
-      Command::TicketMake(node_id) => registration::make_ticket(&bot, q, node_id, tag).await?,
-      Command::TicketCancel(node_id) => registration::cancel_ticket(&bot, q, node_id, tag).await?,
-      Command::TicketNext(node_id) => registration::next_ticket(&bot, node_id, tag).await?,
-      Command::TicketConfirm(node_id) => registration::confirm_ticket(&bot, node_id, tag).await?,
-      Command::Unknown => format!("callback::update unknowm command {}", input),
+      // Command::TicketMake(node_id) => registration::make_ticket(&bot, q, node_id, tag).await?,
+      // Command::TicketCancel(node_id) => registration::cancel_ticket(&bot, q, node_id, tag).await?,
+      // Command::TicketNext(node_id) => registration::next_ticket(&bot, node_id, tag).await?,
+      // Command::TicketConfirm(node_id) => registration::confirm_ticket(&bot, node_id, tag).await?,
+      Command::Unknown => format!("callback.update | Unknowm command {}", input),
+      _ => format!("callback.update | Command {} - not implemented", input)
    };
 
    // Sending a response that is shown in a pop-up window

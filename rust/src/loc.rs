@@ -3,6 +3,7 @@ use std::collections::HashMap;
 ///
 /// 
 pub type LocaleTag = u32;
+pub type Args<'a> = &'a[&'a(dyn std::fmt::Display + Sync)];
 ///
 /// 
 pub fn loc(key: impl Into<String>) -> String {

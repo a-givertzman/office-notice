@@ -14,76 +14,52 @@ use teloxide::{
     },
 };
 use crate::callback::Command;
- 
+use arraylib::iter::IteratorExt;
+
 use crate::environment as env;
 use crate::states::*;
-//  use crate::database as db;
+use crate::db as db;
 use crate::subscription::*;
 use crate::loc::*;
  
-//  pub async fn enter(bot: Bot, msg: Message, state: MainState, mode: WorkTime) -> HandlerResult {
- 
-//     let tag = state.tag;
- 
-//     // Load root node with children
-//     let load_mode = match mode {
-//        WorkTime::All => db::LoadNode::EnabledId(0),
-//        WorkTime::Now => db::LoadNode::EnabledNowId(0),
-//        WorkTime::AllFrom(id) => db::LoadNode::EnabledId(id),
-//     };
-//     let node =  db::node(load_mode).await?;
- 
-//     let chat_id = msg.chat.id;
- 
-//     if node.is_none() {
-//        let text = match mode {
-//           WorkTime::Now => loc(Key::NavigationEnter1, tag, &[]), // "There is no currently open places"
-//           _ => loc(Key::NavigationEnter2, tag, &[]), // "Error, no entries - contact administrator"
-//        };
- 
-//        bot.send_message(chat_id, text)
-//        .await?;
-//     } else {
- 
-//        let node = node.unwrap();
- 
-//        // Next check - picture
-//        match &node.picture {
-//           Origin::None => {
-//              // "Error, can't continue without picture - contact administrator"
-//              let text = loc(Key::NavigationEnter3, tag, &[]);
-//              bot.send_message(chat_id, text)
-//              .await?;
-//           }
-//           Origin::Own(picture) | Origin::Inherited(picture) => {
- 
-//              // Notify about time
-//              if matches!(mode, WorkTime::Now) {
-//                 let now = env::current_date_time();
-//                 // "Establishments currently open, taking into account the time zone {} ({}):"
-//                 let fmt = loc(Key::CommonTimeFormat, tag, &[]);
-//                 let text = loc(Key::NavigationEnter4, tag, &[&env::time_zone_info(), &now.format(&fmt)]);
-//                 bot.send_message(chat_id, text)
-//                 .await?;
-//              }
- 
-//              // All is ok, collect and display info
-//              let user_id = state.user_id; // user needs to sync with cart
-//              let markup = markup(&node, mode, user_id, tag).await?;
-//              let text = node_text(&node, tag);
- 
-//              bot.send_photo(chat_id, InputFile::file_id(picture))
-//              .caption(text)
-//              .reply_markup(markup)
-//              .parse_mode(ParseMode::Html)
-//              .disable_notification(true)
-//              .await?;
-//           }
-//        }
-//     }
- 
-//     Ok(())
-//  }
+ pub async fn enter(bot: Bot, msg: Message, state: MainState, mode: WorkTime) -> HandlerResult {
+    let tag = state.tag;
+    let user_id = state.user_id; // user needs to sync with cart
+    let chat_id = msg.chat.id;
+    // Load root node with children
+    let load_mode = match mode {
+        WorkTime::All => db::LoadNode::Links(user_id),
+        WorkTime::Now => db::LoadNode::Groups(user_id),
+        WorkTime::AllFrom(id) => db::LoadNode::Subscriptions(user_id),
+    };
+    let node =  db::node(load_mode).await?;
+    match node {
+        db::NodeResult::None => {
+            let text = match mode {
+                WorkTime::Now => loc("There is no currently open places"), // "There is no currently open places"
+                _ => loc("Error, no entries - contact administrator"), // "Error, no entries - contact administrator"
+            };
+            bot.send_message(chat_id, text).await?;
+        }
+        db::NodeResult::Links(_) => {
+            let text = loc("markup is not implemented for Links");
+            bot.send_message(chat_id, text).await?;
+        }
+        db::NodeResult::Groups(subscription) => {
+            // All is ok, collect and display info
+            let user_id = state.user_id; // user needs to sync with cart
+            let markup = markup(&subscription, mode, user_id, tag).await?;
+            let text = subscription.title;
+            bot.send_message(chat_id, text)
+            // .caption(text)
+            .reply_markup(markup)
+            .parse_mode(ParseMode::Html)
+            // .disable_notification(true)
+            .await?;
+        }
+    }
+    Ok(())
+}
  
  
 async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
@@ -97,21 +73,24 @@ pub async fn view(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag
  
     let user_id = q.from.id;
  
-    // // Load node from database
-    // let load_mode = match mode {
-    //    WorkTime::All | WorkTime::AllFrom(_) => db::LoadNode::EnabledId(node_id),
-    //    WorkTime::Now => db::LoadNode::EnabledNowId(node_id),
-    // };
-    // let node =  db::node(load_mode).await?;
-    // if node.is_none() {
-    //    // "Error, data deleted, start again"
-    //    let text = loc(Key::NavigationView1, tag, &[]);
-    //    msg(bot, user_id, &text).await?;
-    //    return Ok(())
-    // }
+    // Load node from database
+    let load_mode = match mode {
+       WorkTime::All | WorkTime::AllFrom(_) => db::LoadNode::Groups(user_id),
+       WorkTime::Now => db::LoadNode::Links(user_id),
+    };
+    let node =  db::node(load_mode).await?;
+    if node.is_none() {
+       let text = loc("Error, data deleted, start again");
+       msg(bot, user_id, &text).await?;
+       return Ok(())
+    }
  
     // // Collect info
-    let subscription = node.unwrap();
+    let subscription = match node {
+        db::NodeResult::None => panic!("naviogation.view | NodeResult is None"),
+        db::NodeResult::Links(subscription) => panic!("naviogation.view | NodeResult is Links"),
+        db::NodeResult::Groups(subscription) => subscription,
+    };
     let markup = markup(&subscription, mode, user_id, tag).await?;
  
     let text = format!("Navigation view");
@@ -178,7 +157,7 @@ async fn markup(subscribtion: &Subscription, mode: WorkTime, user_id: UserId, ta
     .iter()
     .map(|child| {
        InlineKeyboardButton::callback(
-       child.title,
+       child.title.clone(),
        format!("{}{}", pas, child.id)
     )})
     .collect();
@@ -191,12 +170,12 @@ async fn markup(subscribtion: &Subscription, mode: WorkTime, user_id: UserId, ta
     // If price not null add button for cart with amount
     if subscribtion.price != 0 {
        // Display only title or title with amount
-       let amount = db::orders_amount(user_id.0 as i64, subscribtion.id).await?;
+       let amount = 0;
        // "+🛒 ({})", "+🛒"
        let caption = if amount > 0 {
-          loc(Key::NavigationMarkup1, tag, &[&amount])
+          loc("+🛒 ({})")
        } else {
-          loc(Key::NavigationMarkup2, tag, &[])
+          loc("+🛒")
        };
  
        let cmd = match mode {
@@ -218,7 +197,7 @@ async fn markup(subscribtion: &Subscription, mode: WorkTime, user_id: UserId, ta
           };
           let cmd = String::from(cmd.as_ref());
           let button_dec = InlineKeyboardButton::callback(
-             loc(Key::NavigationMarkup3, tag, &[]), // "-🛒"
+             loc("-🛒"), // "-🛒"
              format!("{}{}", cmd, subscribtion.id)
           );
           short.push(button_dec);

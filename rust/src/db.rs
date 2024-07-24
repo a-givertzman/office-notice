@@ -1,6 +1,14 @@
 use std::{collections::HashMap, fs, path::Path};
 use serde::de::DeserializeOwned;
-use crate::user::User;
+use teloxide::types::{ChatId, UserId};
+use crate::{subscription::Subscription, user::User};
+///
+/// 
+pub enum LoadNode {
+    Links(UserId), // like Id but without disabled
+    Groups(UserId), // like EnabledId but without children
+    Subscriptions(UserId), // like EnabledId but opened now
+}
 ///
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: String) -> Result<(), String> {
@@ -41,10 +49,10 @@ pub async fn user_insert(user_id: u64, name: String, contact: String) -> Result<
     }
 }
 ///
-/// 
+/// Returns user from storage
 pub async fn user(user_id: u64) -> Result<User, String> {
     let path = "./users.json";
-    log::info!("BotConfig.read | config: {:?}", path);
+    log::info!("DB.user | config: {:?}", path);
     match load(path) {
         Ok(users) => {
             let users: HashMap<u64, User> = users;
@@ -55,7 +63,68 @@ pub async fn user(user_id: u64) -> Result<User, String> {
         }
         Err(err) => Err(format!("DB.user | Error: {:#?}", err)),
     }
-
+}
+///
+/// 
+pub enum NodeResult {
+    None,
+    Links(Vec<String>),
+    Groups(Subscription),
+}
+impl NodeResult {
+    pub fn is_none(&self) -> bool {
+        match self {
+            NodeResult::None => true,
+            _ => false,
+        }
+    }
+    pub fn title(&self) -> String {
+        match self {
+            NodeResult::None => "Is None".to_owned(),
+            NodeResult::Links(_) => "Links".to_owned(),
+            NodeResult::Groups(_) => "Groups".to_owned(),
+        }
+    }
+}
+///
+/// Returns node from storage
+pub async fn node(mode: LoadNode) -> Result<NodeResult, String> {
+    match &mode {
+        LoadNode::Links(user_id) => {
+            let path = "./links.json";
+            log::info!("DB.node | load links from: {:?}", path);
+            match load(path) {
+                Ok(links) => {
+                    let links: Vec<String> = links;
+                    Ok(NodeResult::Links(links))
+                }
+                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+            }
+        }
+        LoadNode::Groups(user_id) => {
+            let path = "./groups.json";
+            log::info!("BotConfig.node | load links from: {:?}", path);
+            match load(path) {
+                Ok(groups) => {
+                    let groups: HashMap<String, Subscription> = groups;
+                    Ok(NodeResult::Groups(groups))
+                }
+                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+            }
+        }
+        LoadNode::Subscriptions(user_id) => {
+            let path = "./groups.json";
+            log::info!("DB.node | load links from: {:?}", path);
+            match load(path) {
+                Ok(groups) => {
+                    let groups: HashMap<String, Subscription> = groups;
+                    Ok(NodeResult::Groups(groups))
+                }
+                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+            }
+        }
+     };
+     Err("DB.node | Not implemented".to_owned())
 }
 // ///
 // /// 
@@ -67,19 +136,19 @@ pub async fn user(user_id: u64) -> Result<User, String> {
 fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
     match fs::read_to_string(&path) {
         Ok(yaml_string) => {
-            log::info!("BotConfig.read | Path to config: {:?}", path.as_ref());
+            log::info!("DB.load | Path to config: {:?}", path.as_ref());
             match serde_yaml::from_str(&yaml_string) {
                 Ok(data) => {
                     let data: T = data;
                     Ok(data)
                 }
                 Err(err) => {
-                    Err(format!("DB.user | Error in config: {:?}\n\terror: {:?}", yaml_string, err))
+                    Err(format!("DB.load | Error in config: {:?}\n\terror: {:?}", yaml_string, err))
                 }
             }
         }
         Err(err) => {
-            Err(format!("DB.user | File '{:?}' reading error: {:?}", path.as_ref(), err))
+            Err(format!("DB.load | File '{:?}' reading error: {:?}", path.as_ref(), err))
         }
     }
 
