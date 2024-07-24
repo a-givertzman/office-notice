@@ -1,21 +1,22 @@
 use std::{fs, path::Path};
-
 use serde::{Deserialize, Serialize};
 ///
-/// Telegram bot configuration
+/// App configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct BotConfig {
-    connection: BotConnectionConfig,
+pub struct AppConfig {
+    pub bot: BotConfig,
 }
-impl BotConfig {
+impl AppConfig {
     ///
     /// Reads config from path
     pub fn read(parent: impl Into<String>, path: impl AsRef<Path>) -> Self {
         match fs::read_to_string(&path) {
             Ok(yaml_string) => {
+                log::info!("BotConfig.read | Path to config: {:?}", path.as_ref());
                 match serde_yaml::from_str(&yaml_string) {
                     Ok(config) => {
-                        let config: BotConfig = config;
+                        log::info!("BotConfig.read | config: {:?}", path.as_ref());
+                        let config: AppConfig = config;
                         config
                     }
                     Err(err) => {
@@ -29,12 +30,17 @@ impl BotConfig {
         }
     }
 }
-
+///
+/// Telegram bot configuration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BotConfig {
+    pub connection: BotConnectionConfig,
+}
 ///
 /// Telegram bot connection configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BotConnectionConfig {
-    name: String,
-    token: String,
+    pub name: String,
+    pub token: String,
 }
 

@@ -1,5 +1,6 @@
 mod config;
 
+use config::{AppConfig, BotConfig};
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
@@ -24,7 +25,10 @@ async fn main() {
     pretty_env_logger::init();
     log::info!("Starting dialogue bot...");
 
-    let bot = Bot::from_env();
+    let config = AppConfig::read("", "./config.yaml");
+    log::info!("config: {:#?}", config);
+    let bot = Bot::new(config.bot.connection.token);
+    // let bot = Bot::from_env();
 
     Dispatcher::builder(
         bot,
