@@ -68,12 +68,12 @@ impl Vars {
             admin_contact_info: {
                 match env::var("CONTACT_INFO") {
                     Ok(s) => {
-                    log::info!("admin name is {}", s);
-                    s
+                        log::info!("admin name is {}", s);
+                        s
                     }
                     Err(e) => {
-                    log(&format!("Something wrong with CONTACT_INFO: {}", e)).await;
-                    String::default()
+                        log(&format!("Something wrong with CONTACT_INFO: {}", e)).await;
+                        String::default()
                     }
                 }
             },
@@ -190,11 +190,20 @@ impl ServiceChat {
 ///
 /// Send message to service chat without notification
 pub async fn log(text: &str) -> Option<MessageId> {
-    log::info!("environment::log | Unable to send message to the service chat");
-    if let Some(chat) = &VARS.get().unwrap().chat {
-       chat.send(text, None).await
-    } else {
-       None
+    log::info!("environment::log | service message: {:?}", text);
+    match &VARS.get() {
+        Some(vars) => {
+            if let Some(chat) = &vars.chat {
+                chat.send(text, None).await
+            } else {
+                log::info!("environment::log | Unable to send message to the service chat");
+                None
+            }
+        }
+        None => {
+            log::info!("environment::log | Unable to send message to the service chat");
+            None
+        }
     }
 }
 ///
