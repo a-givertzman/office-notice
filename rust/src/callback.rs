@@ -17,16 +17,6 @@ use crate::loc::*;
 pub enum Command {
    #[strum(to_string = "pas")]
    Pass(i32), // make the specified node active
-   #[strum(to_string = "pan")]
-   PassNow(i32), // like Pass but only among opened
-   #[strum(to_string = "inc")]
-   IncAmount(i32), // add 1pcs of node to cart and return to Pass mode
-   #[strum(to_string = "inn")]
-   IncAmountNow(i32), // add 1pcs of node to cart and return to PassNow mode
-   #[strum(to_string = "dec")]
-   DecAmount(i32), // remove 1pcs of node from cart and return to Pass mode
-   #[strum(to_string = "den")]
-   DecAmountNow(i32), // remove 1pcs of node from cart and return to PassNow mode
    #[strum(to_string = "tic")]
    TicketMake(i32), // start ordering through the bot
    #[strum(to_string = "tca")]
@@ -48,16 +38,6 @@ impl Command {
 
       if cmd == Self::Pass(0).as_ref() {
          Command::Pass(arg)
-      } else if cmd == Self::PassNow(0).as_ref() {
-         Command::PassNow(arg)
-      } else if cmd == Self::IncAmount(0).as_ref() {
-         Command::IncAmount(arg)
-      } else if cmd == Self::IncAmountNow(0).as_ref() {
-         Command::IncAmountNow(arg)
-      } else if cmd == Self::DecAmount(0).as_ref() {
-         Command::DecAmount(arg)
-      } else if cmd == Self::DecAmountNow(0).as_ref() {
-         Command::DecAmountNow(arg)
       } else if cmd == Self::TicketMake(0).as_ref() {
          Command::TicketMake(arg)
       } else if cmd == Self::TicketCancel(0).as_ref() {
@@ -83,19 +63,19 @@ impl Command {
 
 
 pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult {
-   async fn do_inc(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag: LocaleTag) -> Result<String, String> {
+   async fn do_inc(bot: &Bot, q: CallbackQuery, node_id: i32, tag: LocaleTag) -> Result<String, String> {
       // Increment amount in database and reload node
       let user_id = q.from.id.0;
     //   db::orders_amount_inc(user_id, node_id).await?;
-      menu::view(bot, q, node_id, mode, tag).await?;
+      menu::view(bot, q, node_id).await?;
       Ok(loc("Added"))
    }
 
-   async fn do_dec(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag: LocaleTag) -> Result<String, String> {
+   async fn do_dec(bot: &Bot, q: CallbackQuery, node_id: i32, tag: LocaleTag) -> Result<String, String> {
       // Decrement amount in database and reload node
       let user_id = q.from.id.0;
       // db::orders_amount_dec(user_id, node_id).await?;
-      menu::view(bot, q, node_id, mode, tag).await?;
+      menu::view(bot, q, node_id).await?;
       Ok(loc("Removed"))
    }
 
@@ -106,17 +86,9 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
    let cmd = Command::parse(&input);
    let msg = match cmd {
       Command::Pass(node_id) => {
-         menu::view(&bot, q, node_id, WorkTime::All, tag).await?;
+         menu::view(&bot, q, node_id).await?;
          loc("All places")
       }
-      Command::PassNow(node_id) => {
-         menu::view(&bot, q, node_id, WorkTime::Now, tag).await?;
-         loc("Open now")
-      }
-      Command::IncAmount(node_id) => do_inc(&bot, q, node_id, WorkTime::All, tag).await?,
-      Command::IncAmountNow(node_id) => do_inc(&bot, q, node_id, WorkTime::Now, tag).await?,
-      Command::DecAmount(node_id) => do_dec(&bot, q, node_id, WorkTime::All, tag).await?,
-      Command::DecAmountNow(node_id) => do_dec(&bot, q, node_id, WorkTime::All, tag).await?,
       // Command::TicketMake(node_id) => registration::make_ticket(&bot, q, node_id, tag).await?,
       // Command::TicketCancel(node_id) => registration::cancel_ticket(&bot, q, node_id, tag).await?,
       // Command::TicketNext(node_id) => registration::next_ticket(&bot, node_id, tag).await?,

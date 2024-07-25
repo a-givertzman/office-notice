@@ -66,11 +66,6 @@ impl MainMenu {
    }
 }
 
-pub enum WorkTime {
-   All,  // show all nodes
-   Now,  // considering work time
-   AllFrom(i32), // like all but from the specified node id
-}
 
 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {

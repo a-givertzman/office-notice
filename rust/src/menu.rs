@@ -47,7 +47,7 @@ async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub async fn view(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag: LocaleTag) -> Result<(), String> {
+pub async fn view(bot: &Bot, q: CallbackQuery, node_id: i32) -> Result<(), String> {
 
     let user_id = q.from.id;
 
