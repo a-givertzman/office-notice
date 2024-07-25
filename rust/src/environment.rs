@@ -206,11 +206,4 @@ pub async fn log(text: &str) -> Option<MessageId> {
         }
     }
 }
-///
-/// Checking if the user id is admin
-pub fn is_admin_id(user_id: UserId) -> bool {
-    let vars = VARS.get().unwrap();
-    let user_id = user_id.0;
-    user_id == vars.admin_id1 || user_id == vars.admin_id2 || user_id == vars.admin_id3
-}
  

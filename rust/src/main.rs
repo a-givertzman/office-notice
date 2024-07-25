@@ -6,7 +6,7 @@ mod links;
 mod notice;
 mod subscribe;
 mod callback;
-mod navigation;
+mod menu;
 mod subscription;
 mod db;
 mod user;

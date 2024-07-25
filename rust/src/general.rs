@@ -19,8 +19,8 @@ pub enum Command {
    StartFrom(i32),
    #[strum(to_string = "/msg")]
    Message(ChatId),
-   #[strum(to_string = "/get")]
-   Goto(i32),
+//    #[strum(to_string = "/get")]
+//    Goto(i32),
    Unknown,
 }
 //
@@ -36,8 +36,8 @@ impl Command {
             if l_part == Self::Message(ChatId(0)).as_ref() {
                 let id = r_part.parse().unwrap_or_default();
                 Command::Message(ChatId(id))
-            } else if l_part == Self::Goto(0).as_ref() {
-                Command::Goto(r_part.parse().unwrap_or_default())
+            // } else if l_part == Self::Goto(0).as_ref() {
+            //     Command::Goto(r_part.parse().unwrap_or_default())
             } else {
                 // More long command
                 let l_part = s.get(..7).unwrap_or_default();
@@ -54,14 +54,13 @@ impl Command {
 ///
 /// 
 async fn enter_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState, receiver: ChatId) -> HandlerResult {
-    let tag = state.tag;
     let chat_id = msg.chat.id;
  
     // "Enter a message to send (/ to cancel)"
     let text = loc("Enter a message to send (/ to cancel)");
  
     bot.send_message(chat_id, text)
-    .reply_markup(cancel_markup(tag))
+    .reply_markup(cancel_markup(0))
     .await?;
  
     let new_state = MessageState {
@@ -75,7 +74,6 @@ async fn enter_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
 /// 
 pub async fn update(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     // Parse and handle commands
-    let tag = state.tag;
     let chat_id = msg.chat.id;
     let input = msg.text().unwrap_or_default();
     let cmd = Command::parse(input);
@@ -84,19 +82,18 @@ pub async fn update(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSta
         Command::Start => {
             let text = loc("Welcome. Please click on 'All' to display the full list, 'Open' for those currently working (if the panel with buttons is hidden, expand it), or send a text to search.");
             bot.send_message(chat_id, text)
-            .reply_markup(main_menu_markup(tag))
+            .reply_markup(main_menu_markup(0))
             .await?;
         }
         //
         Command::Message(receiver) => return enter_input(bot, msg, dialogue, state, receiver).await,
        
-        Command::Goto(node_id)
-        | Command::StartFrom(node_id) => return crate::navigation::enter(bot, msg, state, WorkTime::AllFrom(node_id)).await,
+        Command::StartFrom(node_id) => return crate::menu::enter(bot, msg, state).await,
        
         Command::Unknown => {
             let text = loc("Text message please");
             bot.send_message(chat_id, text)
-            .reply_markup(main_menu_markup(tag))
+            .reply_markup(main_menu_markup(0))
             .parse_mode(ParseMode::Html)
             .await?;
         },
@@ -106,11 +103,8 @@ pub async fn update(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSta
 ///
 ///
 pub async fn update_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: MessageState) -> HandlerResult {
-
-    let tag = state.prev_state.tag;
     let chat_id = msg.chat.id;
     let input = msg.text().unwrap_or_default();
-
     let info = if input == loc("/") {
        // "Cancel, message not sent"
        loc("Cancel, message not sent")
@@ -127,7 +121,7 @@ pub async fn update_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: M
 
     // Report result and return to main menu
     bot.send_message(chat_id, info)
-    .reply_markup(main_menu_markup(tag))
+    .reply_markup(main_menu_markup(0))
     .await?;
 
     // Return to previous state

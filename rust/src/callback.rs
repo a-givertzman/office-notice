@@ -7,7 +7,7 @@ use teloxide::{
    prelude::*,
    types::{CallbackQuery, },
 };
-use crate::{db, navigation, states::*};
+use crate::{db, menu, states::*};
 // use crate::database as db;
 // use crate::navigation;
 // use crate::registration;
@@ -87,7 +87,7 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
       // Increment amount in database and reload node
       let user_id = q.from.id.0;
     //   db::orders_amount_inc(user_id, node_id).await?;
-      navigation::view(bot, q, node_id, mode, tag).await?;
+      menu::view(bot, q, node_id, mode, tag).await?;
       Ok(loc("Added"))
    }
 
@@ -95,7 +95,7 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
       // Decrement amount in database and reload node
       let user_id = q.from.id.0;
       // db::orders_amount_dec(user_id, node_id).await?;
-      navigation::view(bot, q, node_id, mode, tag).await?;
+      menu::view(bot, q, node_id, mode, tag).await?;
       Ok(loc("Removed"))
    }
 
@@ -106,11 +106,11 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
    let cmd = Command::parse(&input);
    let msg = match cmd {
       Command::Pass(node_id) => {
-         navigation::view(&bot, q, node_id, WorkTime::All, tag).await?;
+         menu::view(&bot, q, node_id, WorkTime::All, tag).await?;
          loc("All places")
       }
       Command::PassNow(node_id) => {
-         navigation::view(&bot, q, node_id, WorkTime::Now, tag).await?;
+         menu::view(&bot, q, node_id, WorkTime::Now, tag).await?;
          loc("Open now")
       }
       Command::IncAmount(node_id) => do_inc(&bot, q, node_id, WorkTime::All, tag).await?,

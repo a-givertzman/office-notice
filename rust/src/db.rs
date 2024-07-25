@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, path::Path};
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{subscription::{Owners, Subscription}, user::User};
+use crate::{links::Links, subscription::{Owners, Subscription}, user::User};
 ///
 /// 
 pub enum LoadNode {
@@ -87,51 +87,34 @@ impl NodeResult {
     }
 }
 ///
-/// Returns node from storage
-pub async fn node(mode: LoadNode) -> Result<NodeResult, String> {
-    match &mode {
-        LoadNode::Links(user_id) => {
-            let path = "./links.json";
-            log::info!("DB.node | load links from: {:?}", path);
-            match load(path) {
-                Ok(links) => {
-                    let links: Vec<String> = links;
-                    Ok(NodeResult::Links(links))
-                }
-                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
-            }
+/// Returns subscription from storage
+pub async fn subscription(user_id: UserId) -> Result<Subscription, String> {
+    let path = "./subscription.json";
+    log::info!("DB.node | load subscriptions from: {:?}", path);
+    match load(path) {
+        Ok(groups) => {
+            let groups: HashMap<String, Subscription> = groups;
+            Ok(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 })
+            // Ok(NodeResult::Groups(groups))
         }
-        LoadNode::Groups(user_id) => {
-            let path = "./groups.json";
-            log::info!("BotConfig.node | load links from: {:?}", path);
-            match load(path) {
-                Ok(groups) => {
-                    let groups: HashMap<String, Subscription> = groups;
-                    Ok(NodeResult::Groups(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 }))
-                    // Ok(NodeResult::Groups(groups))
-                }
-                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
-            }
-        }
-        LoadNode::Subscriptions(user_id) => {
-            let path = "./groups.json";
-            log::info!("DB.node | load links from: {:?}", path);
-            match load(path) {
-                Ok(groups) => {
-                    let groups: HashMap<String, Subscription> = groups;
-                    Ok(NodeResult::Groups(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 }))
-                    // Ok(NodeResult::Groups(groups))
-                }
-                Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
-            }
-        }
-     }
+        Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+    }
     //  Err("DB.node | Not implemented".to_owned())
 }
-// ///
-// /// 
-// fn store<T: Serialize>(path: impl AsRef<Path>, value: T) -> Result<(), String> {
-
+///
+/// Returns Links
+pub async fn links(user_id: UserId) -> Result<Links, String> {
+    let _ = user_id;
+    let path = "./links.json";
+    log::info!("DB.node | load links from: {:?}", path);
+    match load(path) {
+        Ok(links) => {
+            let links: Links = links;
+            Ok(links)
+        }
+        Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+    }
+}
 // }
 ///
 /// 
@@ -155,3 +138,6 @@ fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
     }
 
 }
+// ///
+// /// 
+// fn store<T: Serialize>(path: impl AsRef<Path>, value: T) -> Result<(), String> {
