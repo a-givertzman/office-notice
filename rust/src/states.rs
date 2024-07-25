@@ -201,7 +201,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery) -> HandlerResult {
    let locale = q.from.language_code.as_deref();
    let tag = loc_tag(locale);
 
-   let res = crate::callback::update(bot.to_owned(), q.to_owned(), tag).await;
+   let res = crate::callback::update(bot.to_owned(), q.to_owned()).await;
 
    // Notify user about possible error
    if let Err(e) = res {

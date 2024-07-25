@@ -62,23 +62,7 @@ impl Command {
 }
 
 
-pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult {
-   async fn do_inc(bot: &Bot, q: CallbackQuery, node_id: i32, tag: LocaleTag) -> Result<String, String> {
-      // Increment amount in database and reload node
-      let user_id = q.from.id.0;
-    //   db::orders_amount_inc(user_id, node_id).await?;
-      menu::view(bot, q, node_id).await?;
-      Ok(loc("Added"))
-   }
-
-   async fn do_dec(bot: &Bot, q: CallbackQuery, node_id: i32, tag: LocaleTag) -> Result<String, String> {
-      // Decrement amount in database and reload node
-      let user_id = q.from.id.0;
-      // db::orders_amount_dec(user_id, node_id).await?;
-      menu::view(bot, q, node_id).await?;
-      Ok(loc("Removed"))
-   }
-
+pub async fn update(bot: Bot, q: CallbackQuery) -> HandlerResult {
    let query_id = q.id.to_owned();
 
    // Parse and process commands by receiving a message to send back
@@ -102,6 +86,5 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
    .text(msg)
    .await
    .map_err(|err| format!("inline::update {}", err))?;
-
    Ok(())
 }
