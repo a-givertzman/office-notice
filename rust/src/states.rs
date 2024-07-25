@@ -88,6 +88,25 @@ impl LinksMenu {
    }
 }
 ///
+/// Notice menu
+#[derive(Debug, Clone, PartialEq)]
+enum NoticeMenu {
+   Notice(String),    // Notice menu
+   Done,            // Exit menu
+}
+//
+//
+impl NoticeMenu {
+   fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        match s.to_lowercase().as_str() {
+            "/done" => Self::Done,
+            "/back" => Self::Done,
+            "/exit" => Self::Done,
+            _ => Self::Notice(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        }
+   }
+}
+///
 /// 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
     let message_handler = Update::filter_message()
@@ -218,8 +237,12 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
                 MainMenu::Links(level) => {
-                    let state = LinksState {prev_state: state, prev_level: None, level, child: IndexMap::new(), user_id: state.user_id,};
+                    let state = LinksState {prev_state: state, prev_level: None, level, child: IndexMap::new(), user_id };
                     crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
+                }
+                MainMenu::Notice => {
+                    let state = NoticeState { prev_state: state, user_id };
+                    crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
                 _ => {
@@ -251,7 +274,24 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             }
         },
         State::Notice(state) => {
-            crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
+            log::debug!("states.callback | Notice > state: {:#?}", state);
+            let input = q.data.to_owned().unwrap_or_default();
+            log::debug!("states.callback | Notice > Input: {}", input);
+            let cmd = NoticeMenu::parse(&input, 0);
+            log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
+            match cmd {
+                NoticeMenu::Notice(_) => {
+                    let state = NoticeState {
+                        prev_state: state.prev_state,
+                        user_id: state.user_id,
+                    };
+                    crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
+                }
+                NoticeMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
+                _ => {
+                    log::debug!("states.command | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
+                }
+            }
         }
         State::Subscribe(_) => todo!(),
         State::GeneralMessage(_) => todo!(),
