@@ -111,7 +111,7 @@ async fn markup(menu: &IndexMap<String, MenuItem>, user_id: UserId) -> Result<In
     // Back button
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
-        format!("Back")
+        format!("/back")
     );
     last_row.push(button_back);
     // Add the last unpaired button and the back button

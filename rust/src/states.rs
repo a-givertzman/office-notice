@@ -228,6 +228,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             }
         }
         State::Links(state) => {
+            log::debug!("states.callback | state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
             log::debug!("states.callback | Input: {}", input);
             let cmd = LinksMenu::parse(&input, 0);

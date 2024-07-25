@@ -33,23 +33,24 @@ pub struct LinksState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: LinksState) -> HandlerResult {
-    // let user = db::user(state.user_id.0).await?;
-    let state = state.to_owned();
-    view(bot, msg, state.clone()).await?;
-    dialogue.update(state).await?;
-    Ok(())
-}
-///
-/// 
-pub async fn view(bot: Bot, msg: Message, mut state: LinksState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("links.view | state: {:#?}", state);
     let links =  match state.child.get(&state.level) {
         Some(links) => links.to_owned(),
         None => db::links(user_id).await?,
     };
+    log::debug!("links.view | links: {:#?}", links);
     state.child = links.child.clone();
+    let state = state.to_owned();
+    dialogue.update(state.clone()).await?;
+    view(bot, msg, state, links).await?;
+    Ok(())
+}
+///
+/// 
+pub async fn view(bot: Bot, msg: Message, state: LinksState, links: Links) -> HandlerResult {
+    let user_id = state.user_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));
     bot.edit_message_text(msg.chat.id, msg.id, text)
@@ -82,7 +83,7 @@ async fn markup(links: &Links, user_id: UserId) -> Result<InlineKeyboardMarkup, 
     }
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
-        format!("Back")
+        format!("/back")
     );
     buttons.push(button_back);
     let markup = buttons.into_iter()
