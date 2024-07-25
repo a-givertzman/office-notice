@@ -1,59 +1,62 @@
+use std::collections::HashMap;
+
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, ReplyMarkup, User, UserId}
 };
 use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue, StartState}};
 ///
 /// 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
     pub title: String,
     pub url: String,
 }
 ///
 /// 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Links {
+    pub title: Option<String>,
     pub links: Vec<Link>,
-    pub child: Vec<Links>,
+    #[serde(default)]
+    pub child: IndexMap<String, Links>,
 }
 ///
 /// 
 #[derive(Debug, Clone)]
 pub struct LinksState {
     pub prev_state: MainState,
+    pub prev_level: Option<String>,
+    pub level: String,
+    pub child: IndexMap<String, Links>,
     pub user_id: UserId,
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
-    let user = db::user(state.user_id.0).await?;
-    let state = LinksState {
-        prev_state: state,
-        user_id: state.user_id,
-    };
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: LinksState) -> HandlerResult {
+    // let user = db::user(state.user_id.0).await?;
     let state = state.to_owned();
-    dialogue.update(state.clone()).await?;
-    view(bot, msg, state).await?;
+    view(bot, msg, state.clone()).await?;
+    dialogue.update(state).await?;
     Ok(())
 }
 ///
 /// 
-pub async fn view(bot: Bot, msg: Message, state: LinksState) -> HandlerResult {
+pub async fn view(bot: Bot, msg: Message, mut state: LinksState) -> HandlerResult {
     let user_id = state.user_id;
-    // Load from storage
-    let links =  db::links(user_id).await?;
-    // // Collect info
+    log::debug!("links.view | state: {:#?}", state);
+    let links =  match state.child.get(&state.level) {
+        Some(links) => links.to_owned(),
+        None => db::links(user_id).await?,
+    };
+    state.child = links.child.clone();
     let markup = markup(&links, user_id).await?;
-    let text = format!("Useful links");
-    // let chat_id = ChatId::Id(message.chat_id());
-    bot.send_message(msg.chat.id, text)
+    let text = links.title.unwrap_or(format!("Useful links"));
+    bot.edit_message_text(msg.chat.id, msg.id, text)
+        // .edit_message_media(user_id, message_id, media)
         .reply_markup(markup)
-        .await?;    
-    // bot.edit_message_text(user_id, message_id, text)
-    //     // .edit_message_media(user_id, message_id, media)
-    //     .reply_markup(markup)
-    //     .await
-    //     .map_err(|err| format!("inline::view {}", err))?;
+        .await
+        .map_err(|err| format!("inline::view {}", err))?;
     Ok(())
 }
 ///
@@ -67,6 +70,16 @@ async fn markup(links: &Links, user_id: UserId) -> Result<InlineKeyboardMarkup, 
                 reqwest::Url::parse(&link.url).unwrap(),
         )})
         .collect();
+    for (id, child) in &links.child {
+        if let Some(title) = &child.title {
+            buttons.push(
+                InlineKeyboardButton::callback(
+                    title,
+                    format!("/{}", id),
+                )
+            );
+        }
+    }
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
         format!("Back")

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use arraylib::iter::IteratorExt;
+use indexmap::IndexMap;
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, ParseMode, ReplyMarkup, User, UserId}
 };
 use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscription};
@@ -75,7 +76,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainStat
  }
  ///
  /// 
- async fn markup(subscriptions: &HashMap<String, Subscription>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+ async fn markup(subscriptions: &IndexMap<String, Subscription>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
    // Create buttons for each group
    let buttons: Vec<InlineKeyboardButton> = subscriptions
    .iter()

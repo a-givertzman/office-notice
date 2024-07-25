@@ -2,7 +2,7 @@
 Office menu bot.
 User interface with inline buttons
 =============================================================================== */
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{
     prelude::*,
@@ -80,7 +80,7 @@ pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
 }
 ///
 /// 
-async fn markup(menu: &HashMap<String, MenuItem>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(menu: &IndexMap<String, MenuItem>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group
     let buttons: Vec<InlineKeyboardButton> = menu
     .iter()

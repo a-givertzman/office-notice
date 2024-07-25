@@ -1,4 +1,5 @@
 use derive_more::From;
+use indexmap::IndexMap;
 use teloxide::{prelude::*,
    types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
@@ -44,9 +45,9 @@ pub struct MainState {
 }
 ///
 /// Main menu
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum MainMenu {
-   Links,      // Links menu
+   Links(String),      // Links menu
    Notice,     // Notice menu
    Subscribe,  // subscribe to receive notice
    Done,       // Exit menu
@@ -56,13 +57,34 @@ enum MainMenu {
 //
 impl MainMenu {
    fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
-    match s.to_lowercase().as_str() {
-        "/notice" => Self::Notice,
-        "/links" => Self::Links,
-        "/subscribe" => Self::Subscribe,
-        "/done" => Self::Done,
-        _ => Self::Unknown,
-    }
+        match s.to_lowercase().as_str() {
+            "/notice" => Self::Notice,
+            "/links" => Self::Links(s.to_owned()),
+            "/subscribe" => Self::Subscribe,
+            "/done" => Self::Done,
+            "/back" => Self::Done,
+            "/exit" => Self::Done,
+            _ => Self::Unknown,
+        }
+   }
+}
+///
+/// Links menu
+#[derive(Debug, Clone, PartialEq)]
+enum LinksMenu {
+   Link(String),    // Links menu
+   Done,            // Exit menu
+}
+//
+//
+impl LinksMenu {
+   fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        match s.to_lowercase().as_str() {
+            "/done" => Self::Done,
+            "/back" => Self::Done,
+            "/exit" => Self::Done,
+            _ => Self::Link(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        }
    }
 }
 ///
@@ -141,7 +163,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
         _ => {
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
-                MainMenu::Links => crate::links::enter(bot, msg, dialogue, new_state).await?,
+                MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id: state.user_id,}).await?,
                 MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, new_state).await?,
                 MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
@@ -195,34 +217,42 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             let cmd = MainMenu::parse(&input, 0);
             log::debug!("states.callback | Cmd: {:?}", cmd);
             match cmd {
-                MainMenu::Links => crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
+                MainMenu::Links(level) => {
+                    let state = LinksState {prev_state: state, prev_level: None, level, child: IndexMap::new(), user_id: state.user_id,};
+                    crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
+                }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
                 _ => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
             }
         }
-        State::Links(_) => todo!(),
+        State::Links(state) => {
+            let input = q.data.to_owned().unwrap_or_default();
+            log::debug!("states.callback | Input: {}", input);
+            let cmd = LinksMenu::parse(&input, 0);
+            log::debug!("states.callback | Cmd: {:?}", cmd);
+            match cmd {
+                LinksMenu::Link(level) => {
+                    let state = LinksState {
+                        prev_state: state.prev_state,
+                        prev_level: Some(state.level),
+                        level,
+                        child: state.child,
+                        user_id: state.user_id,
+                    };
+                    crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
+                }
+                LinksMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
+                _ => {
+                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, input);
+                }
+            }
+        },
         State::Notice(_) => todo!(),
         State::Subscribe(_) => todo!(),
         State::GeneralMessage(_) => todo!(),
     }
-    // let locale = q.from.language_code.as_deref();
-    // let tag = loc_tag(locale);
-    // let res = crate::callback::update(bot.to_owned(), q.to_owned()).await;
-    // // Notify user about possible error
-    // if let Err(e) = res {
-    //     // Sending a response that is shown in a pop-up window
-    //     let text = loc("Error, start again"); // "Error, start over"
-    //     bot.answer_callback_query(q.id)
-    //     .text(&text)
-    //     .await
-    //     .map_err(|err| format!("inline::update {} {}", text, err))?;
-    //     // Send full text of error
-    //     bot.send_message(q.from.id, format!("{}\n{}", text, e)).await?;
-    //     // For default handler
-    //     return Err(e);
-    // }
     Ok(())
 }
 ///
