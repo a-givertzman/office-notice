@@ -41,6 +41,7 @@ where
 ///
 #[tokio::main]
 async fn main() {
+   env::set_var("RUST_BACKTRACE", "1");
    pretty_env_logger::init();
    log::info!("Starting dialogue bot...");
    let config = AppConfig::read("", "./config.yaml");

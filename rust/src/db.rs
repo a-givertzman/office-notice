@@ -65,54 +65,32 @@ pub async fn user(user_id: u64) -> Result<User, String> {
     }
 }
 ///
-/// 
-pub enum NodeResult {
-    None,
-    Links(Vec<String>),
-    Groups(Subscription),
-}
-impl NodeResult {
-    pub fn is_none(&self) -> bool {
-        match self {
-            NodeResult::None => true,
-            _ => false,
-        }
-    }
-    pub fn title(&self) -> String {
-        match self {
-            NodeResult::None => "Is None".to_owned(),
-            NodeResult::Links(_) => "Links".to_owned(),
-            NodeResult::Groups(_) => "Groups".to_owned(),
-        }
-    }
-}
-///
 /// Returns subscription from storage
 pub async fn subscription(user_id: UserId) -> Result<Subscription, String> {
     let path = "./subscription.json";
-    log::info!("DB.node | load subscriptions from: {:?}", path);
+    log::info!("DB.subscription | load subscriptions from: {:?}", path);
     match load(path) {
         Ok(groups) => {
             let groups: HashMap<String, Subscription> = groups;
             Ok(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 })
             // Ok(NodeResult::Groups(groups))
         }
-        Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+        Err(err) => Err(format!("DB.subscription | Error: {:#?}", err)),
     }
-    //  Err("DB.node | Not implemented".to_owned())
+    //  Err("DB.subscription | Not implemented".to_owned())
 }
 ///
 /// Returns Links
 pub async fn links(user_id: UserId) -> Result<Links, String> {
     let _ = user_id;
     let path = "./links.json";
-    log::info!("DB.node | load links from: {:?}", path);
+    log::info!("DB.links | load links from: {:?}", path);
     match load(path) {
         Ok(links) => {
             let links: Links = links;
             Ok(links)
         }
-        Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
+        Err(err) => Err(format!("DB.links | Error: {:#?}", err)),
     }
 }
 // }

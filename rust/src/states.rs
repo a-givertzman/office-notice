@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
 
-use crate::{db, environment as env, links::LinksState, notice::NoticeState, subscribe::SubscribeState};
+use crate::{db, environment as env, links::LinksState, menu, notice::NoticeState, subscribe::SubscribeState};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -105,7 +105,7 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
    let new_state = MainState { prev_state: state, user_id };
    // Insert or update info about user
    update_last_seen_full(user).await?;
-   env::log(&format!("states.start | user {} ({})", user.full_name(), user_id)).await;
+   log::debug!("states.start | user {} ({})", user.full_name(), user_id);
 
    command(bot, msg, dialogue, new_state)
    .await
@@ -116,11 +116,6 @@ async fn exit(bot: Bot, msg: Message) -> HandlerResult {
    let chat_id = msg.chat.id;
    bot.send_message(chat_id, "Ok, by").await?;
    Ok(())
-}
-///
-///
-async fn receive_main_menu_choise(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
-    Ok(())
 }
 ///
 /// ///
@@ -138,7 +133,7 @@ pub async fn reload(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSta
 // #[async_recursion]
 pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
    let chat_id = msg.chat.id;
-
+   let user_name = format!("{} {}", msg.chat.first_name().unwrap_or(""), msg.chat.first_name().unwrap_or(""));
    // For admin and regular users there is different interface
    let user_id = state.user_id;
    let new_state = MainState {
@@ -152,27 +147,33 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
    }
 
    // Try to execute command and if it impossible notify about restart
-   let text = msg.text().unwrap_or_default();
-   let cmd = MainMenu::parse(text, 0);
+   let cmd = msg.text().unwrap_or_default();
+   log::debug!("states.command | user: {} ({}), input {} ", user_name, user_id, cmd);
    match cmd {
-      MainMenu::Links => crate::links::enter(bot, msg, dialogue, new_state).await?,
-      MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
-      MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, new_state).await?,
-      MainMenu::Done => exit(bot, msg).await?,
-
-      MainMenu::Unknown => {
-
-         // Report about a possible restart and loss of context
-         if state.prev_state.restarted {
-            let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
-            bot.send_message(chat_id, text)
-            .reply_markup(main_menu_markup(0))
-            .await?;
-         } else {
-
-            // Process general commands without search if restarted (to prevent search submode commands)
-            crate::general::update(bot, msg, dialogue, new_state).await?;
-         }
+      "/start" => menu::enter(bot, msg, state).await?,
+      _ => {
+         let cmd = MainMenu::parse(cmd, 0);
+         match cmd {
+            MainMenu::Links => crate::links::enter(bot, msg, dialogue, new_state).await?,
+            MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
+            MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, new_state).await?,
+            MainMenu::Done => exit(bot, msg).await?,
+      
+            MainMenu::Unknown => {
+      
+               // Report about a possible restart and loss of context
+               if state.prev_state.restarted {
+                  let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
+                  bot.send_message(chat_id, text)
+                  .reply_markup(main_menu_markup(0))
+                  .await?;
+               } else {
+      
+                  // Process general commands without search if restarted (to prevent search submode commands)
+                  crate::general::update(bot, msg, dialogue, new_state).await?;
+               }
+            }
+         };
       }
    };
    Ok(())
