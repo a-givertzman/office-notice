@@ -250,7 +250,9 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
             }
         },
-        State::Notice(_) => todo!(),
+        State::Notice(state) => {
+            crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
+        }
         State::Subscribe(_) => todo!(),
         State::GeneralMessage(_) => todo!(),
     }
