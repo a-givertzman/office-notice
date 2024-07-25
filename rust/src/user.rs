@@ -3,7 +3,7 @@ use teloxide::types::ChatId;
 use crate::subscription::Subscription;
 ///
 /// 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
    #[serde(alias = "user_id", alias = "chat_id")]
    #[serde(with = "chat_id")]

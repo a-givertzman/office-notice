@@ -163,8 +163,8 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
         _ => {
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
-                MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id: state.user_id,}).await?,
-                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, new_state).await?,
+                MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id}).await?,
+                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id }).await?,
                 MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
                 MainMenu::Unknown => {
@@ -213,9 +213,9 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         State::Start(_) => {}
         State::Main(state) => {
             let input = q.data.to_owned().unwrap_or_default();
-            log::debug!("states.callback | Input: {}", input);
+            log::debug!("states.callback | Main > Input: {}", input);
             let cmd = MainMenu::parse(&input, 0);
-            log::debug!("states.callback | Cmd: {:?}", cmd);
+            log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
                 MainMenu::Links(level) => {
                     let state = LinksState {prev_state: state, prev_level: None, level, child: IndexMap::new(), user_id: state.user_id,};
@@ -223,16 +223,16 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
                 _ => {
-                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, input);
+                    log::debug!("states.command | Main > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
             }
         }
         State::Links(state) => {
-            log::debug!("states.callback | state: {:#?}", state);
+            log::debug!("states.callback | Links > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
-            log::debug!("states.callback | Input: {}", input);
+            log::debug!("states.callback | Links > Input: {}", input);
             let cmd = LinksMenu::parse(&input, 0);
-            log::debug!("states.callback | Cmd: {:?}", cmd);
+            log::debug!("states.callback | Links > Cmd: {:?}", cmd);
             match cmd {
                 LinksMenu::Link(level) => {
                     let state = LinksState {
@@ -246,7 +246,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
                 LinksMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
                 _ => {
-                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, input);
+                    log::debug!("states.command | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
             }
         },

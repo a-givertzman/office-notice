@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, ReplyMarkup, User, UserId}
-};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue, StartState}};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}};
 ///
 /// 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,12 +32,12 @@ pub struct LinksState {
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
     let user_id = state.user_id;
-    log::debug!("links.view | state: {:#?}", state);
+    log::debug!("links.enter | state: {:#?}", state);
     let links =  match state.child.get(&state.level) {
         Some(links) => links.to_owned(),
         None => db::links(user_id).await?,
     };
-    log::debug!("links.view | links: {:#?}", links);
+    log::debug!("links.enter | links: {:#?}", links);
     state.child = links.child.clone();
     let state = state.to_owned();
     dialogue.update(state.clone()).await?;
