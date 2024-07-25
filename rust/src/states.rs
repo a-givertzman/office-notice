@@ -13,7 +13,7 @@ pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 // FSM states
-#[derive(Clone, From)]
+#[derive(Debug, Clone, From)]
 pub enum State {
    Start(StartState),   // initial state
    Main(MainState),     // main menu state
@@ -44,6 +44,7 @@ pub struct MainState {
 }
 ///
 /// Main menu
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum MainMenu {
    Links,      // Links menu
    Notice,     // Notice menu
@@ -56,10 +57,10 @@ enum MainMenu {
 impl MainMenu {
    fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
     match s.to_lowercase().as_str() {
-        "notice" => Self::Notice,
-        "links" => Self::Links,
-        "subscribe" => Self::Subscribe,
-        "done" => Self::Done,
+        "/notice" => Self::Notice,
+        "/links" => Self::Links,
+        "/subscribe" => Self::Subscribe,
+        "/done" => Self::Done,
         _ => Self::Unknown,
     }
    }
@@ -80,7 +81,6 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
     )
         .branch(dptree::entry().endpoint(chat_message_handler));
     let callback_query_handler = Update::filter_callback_query()
-        // .branch(dptree::case![State::Main(state)].endpoint(command))
         .endpoint(callback);
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
     .branch(message_handler)
@@ -181,28 +181,48 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
 }
 ///
 /// 
-pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: MainState) -> HandlerResult {
+pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: State) -> HandlerResult {
     let user_id = q.from.id;
     let user_name = q.from.full_name();
     // Determine the language of the user
     let input = q.data.to_owned().unwrap_or_default();
     log::debug!("states.callback | State: {:?}, User {} ({}) Input: {}", state, user_name, user_id, input);
-    let locale = q.from.language_code.as_deref();
-    let tag = loc_tag(locale);
-    let res = crate::callback::update(bot.to_owned(), q.to_owned()).await;
-    // Notify user about possible error
-    if let Err(e) = res {
-        // Sending a response that is shown in a pop-up window
-        let text = loc("Error, start again"); // "Error, start over"
-        bot.answer_callback_query(q.id)
-        .text(&text)
-        .await
-        .map_err(|err| format!("inline::update {} {}", text, err))?;
-        // Send full text of error
-        bot.send_message(q.from.id, format!("{}\n{}", text, e)).await?;
-        // For default handler
-        return Err(e);
+    match state {
+        State::Start(_) => {}
+        State::Main(state) => {
+            let input = q.data.to_owned().unwrap_or_default();
+            log::debug!("states.callback | Input: {}", input);
+            let cmd = MainMenu::parse(&input, 0);
+            log::debug!("states.callback | Cmd: {:?}", cmd);
+            match cmd {
+                MainMenu::Links => crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
+                MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
+                _ => {
+                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, input);
+                }
+            }
+        }
+        State::Links(_) => todo!(),
+        State::Notice(_) => todo!(),
+        State::Subscribe(_) => todo!(),
+        State::GeneralMessage(_) => todo!(),
     }
+    // let locale = q.from.language_code.as_deref();
+    // let tag = loc_tag(locale);
+    // let res = crate::callback::update(bot.to_owned(), q.to_owned()).await;
+    // // Notify user about possible error
+    // if let Err(e) = res {
+    //     // Sending a response that is shown in a pop-up window
+    //     let text = loc("Error, start again"); // "Error, start over"
+    //     bot.answer_callback_query(q.id)
+    //     .text(&text)
+    //     .await
+    //     .map_err(|err| format!("inline::update {} {}", text, err))?;
+    //     // Send full text of error
+    //     bot.send_message(q.from.id, format!("{}\n{}", text, e)).await?;
+    //     // For default handler
+    //     return Err(e);
+    // }
     Ok(())
 }
 ///

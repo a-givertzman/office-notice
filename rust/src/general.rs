@@ -4,7 +4,7 @@ use crate::states::*;
 use crate::loc::*;
 ///
 ///
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MessageState {
    pub prev_state: MainState,
    pub receiver: ChatId,

@@ -63,8 +63,8 @@ pub async fn user(user_id: u64) -> Result<User, String> {
     log::info!("DB.user | config: {:?}", path);
     match load(path) {
         Ok(users) => {
-            let users: HashMap<u64, User> = users;
-            match users.get(&user_id) {
+            let users: HashMap<String, User> = users;
+            match users.get(&user_id.to_string()) {
                 Some(user) => Ok(user.to_owned()),
                 None => Err(format!("DB.user | User with id '{}' - not found", user_id)),
             }

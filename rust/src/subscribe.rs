@@ -6,7 +6,7 @@ use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, Up
 use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscription};
 ///
 /// 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SubscribeState {
    pub prev_state: MainState,
    pub user_id: UserId,

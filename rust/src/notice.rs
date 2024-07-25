@@ -5,7 +5,7 @@ use teloxide::{prelude::*,
 use crate::states::{HandlerResult, MainState, MyDialogue};
 ///
 /// 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NoticeState {
    pub prev_state: MainState,
 //    pub customer: Customer,

@@ -18,7 +18,7 @@ pub struct Links {
 }
 ///
 /// 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct LinksState {
     pub prev_state: MainState,
     pub user_id: UserId,
@@ -26,9 +26,7 @@ pub struct LinksState {
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
-    // Load user info
     let user = db::user(state.user_id.0).await?;
-    // Display
     let state = LinksState {
         prev_state: state,
         user_id: state.user_id,
