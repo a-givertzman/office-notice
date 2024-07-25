@@ -94,7 +94,7 @@ pub async fn update(bot: Bot, q: CallbackQuery, tag: LocaleTag) -> HandlerResult
    async fn do_dec(bot: &Bot, q: CallbackQuery, node_id: i32, mode: WorkTime, tag: LocaleTag) -> Result<String, String> {
       // Decrement amount in database and reload node
       let user_id = q.from.id.0;
-      db::orders_amount_dec(user_id, node_id).await?;
+      // db::orders_amount_dec(user_id, node_id).await?;
       navigation::view(bot, q, node_id, mode, tag).await?;
       Ok(loc("Removed"))
    }

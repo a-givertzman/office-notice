@@ -41,25 +41,31 @@ where
 ///
 #[tokio::main]
 async fn main() {
-    pretty_env_logger::init();
-    log::info!("Starting dialogue bot...");
-    let config = AppConfig::read("", "./config.yaml");
-    log::info!("config: {:#?}", config);
-    // let bot = Bot::new(config.bot.connection.token);
-    let bot = Bot::from_env();
-    Dispatcher::builder(bot.clone(), states::schema())
-    .dependencies(dptree::deps![InMemStorage::<State>::new()])
-    // .default_handler(|upd| async move {
-    //    environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
-    // })
-    // If the dispatcher fails for some reason, execute this handler.
-    .error_handler(Arc::new(MyErrorHandler{}))
-    .enable_ctrlc_handler()
-    .build()
-    .dispatch()
-    // .dispatch_with_listener(
-    //    update_listener,
-    //    LoggingErrorHandler::with_custom_text("main::An error from the update listener"),
-    // )
-    .await;
+   pretty_env_logger::init();
+   log::info!("Starting dialogue bot...");
+   let config = AppConfig::read("", "./config.yaml");
+   log::info!("config: {:#?}", config);
+   // let bot = Bot::new(config.bot.connection.token);
+   let bot = Bot::from_env();
+   // Settings from environments
+   let vars = environment::Vars::from_env(bot.clone()).await;
+   match environment::VARS.set(vars) {
+      Ok(_) => {environment::log("Bot restarted").await;},
+      _ => log::info!("Something wrong with TELEGRAM_LdOG_CHAT"),
+   }    
+   Dispatcher::builder(bot.clone(), states::schema())
+      .dependencies(dptree::deps![InMemStorage::<State>::new()])
+      // .default_handler(|upd| async move {
+      //    environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
+      // })
+      // If the dispatcher fails for some reason, execute this handler.
+      .error_handler(Arc::new(MyErrorHandler{}))
+      .enable_ctrlc_handler()
+      .build()
+      .dispatch()
+      // .dispatch_with_listener(
+      //    update_listener,
+      //    LoggingErrorHandler::with_custom_text("main::An error from the update listener"),
+      // )
+      .await;
 }

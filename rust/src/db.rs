@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, path::Path};
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{subscription::Subscription, user::User};
+use crate::{subscription::{Owners, Subscription}, user::User};
 ///
 /// 
 pub enum LoadNode {
@@ -107,7 +107,8 @@ pub async fn node(mode: LoadNode) -> Result<NodeResult, String> {
             match load(path) {
                 Ok(groups) => {
                     let groups: HashMap<String, Subscription> = groups;
-                    Ok(NodeResult::Groups(groups))
+                    Ok(NodeResult::Groups(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 }))
+                    // Ok(NodeResult::Groups(groups))
                 }
                 Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
             }
@@ -118,13 +119,14 @@ pub async fn node(mode: LoadNode) -> Result<NodeResult, String> {
             match load(path) {
                 Ok(groups) => {
                     let groups: HashMap<String, Subscription> = groups;
-                    Ok(NodeResult::Groups(groups))
+                    Ok(NodeResult::Groups(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 }))
+                    // Ok(NodeResult::Groups(groups))
                 }
                 Err(err) => Err(format!("DB.node | Error: {:#?}", err)),
             }
         }
-     };
-     Err("DB.node | Not implemented".to_owned())
+     }
+    //  Err("DB.node | Not implemented".to_owned())
 }
 // ///
 // /// 
