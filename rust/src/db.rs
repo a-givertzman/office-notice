@@ -1,7 +1,20 @@
 use std::{collections::HashMap, fs, path::Path};
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{links::Links, subscription::{Subscription, Subscriptions}, user::User};
+use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::User};
+///
+/// 
+pub async fn menu(user_id: UserId) -> Result<HashMap<String, MenuItem>, String> {
+    let menu = HashMap::from([
+        ("Links", "/Links"),
+        ("Notice", "/Notice"),
+        ("Subscribe", "/Subscribe"),
+    ])
+        .into_iter()
+        .map(|(title, command)| (title.to_owned(), MenuItem { title: title.to_owned(), command: command.to_owned()}))
+        .collect();
+    Ok(menu)
+}
 ///
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {

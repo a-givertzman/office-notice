@@ -1,14 +1,9 @@
 /* ===============================================================================
-Restaurant menu bot.
-User interface with inline buttons. 27 May 2021.
-----------------------------------------------------------------------------
-Licensed under the terms of the GPL version 3.
-http://www.gnu.org/licenses/gpl-3.0.html
-Copyright (c) 2020-2022 by Artem Khomenko _mag12@yahoo.com.
+Office menu bot.
+User interface with inline buttons
 =============================================================================== */
-
 use std::collections::HashMap;
-
+use serde::{Deserialize, Serialize};
 use teloxide::{
     prelude::*,
     types::{InputFile, InlineKeyboardButton, InlineKeyboardMarkup,
@@ -17,7 +12,6 @@ use teloxide::{
 };
 use crate::callback::Command;
 use arraylib::iter::IteratorExt;
-
 use crate::environment as env;
 use crate::states::*;
 use crate::db as db;
@@ -25,18 +19,20 @@ use crate::subscription::*;
 use crate::loc::*;
 ///
 /// 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MenuItem {
+    pub title: String,
+    pub command: String,
+}
+///
+/// 
 pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
     let user_id = state.user_id; // user needs to sync with cart
     let chat_id = msg.chat.id;
     // Load groups
-    let subscriptions =  db::subscriptions(user_id).await?;
+    let menu =  db::menu(user_id).await?;
     // All is ok, collect and display info
-    let menu = HashMap::from([
-        ("Links", "/Links"),
-        ("Notice", "/Notice"),
-        ("Subscribe", "/Subscribe"),
-    ]);
-    let markup = markup(&subscriptions, user_id).await?;
+    let markup = markup(&menu, user_id).await?;
     let text = "Main menu";
     bot.send_message(chat_id, text)
     // .caption(text)
@@ -60,9 +56,9 @@ pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
     let user_id = q.from.id;
     log::debug!("menu.view | user_id: {}", user_id);
     // Load from storage
-    let subscription =  db::subscriptions(user_id).await?;
+    let menu =  db::menu(user_id).await?;
     // // Collect info
-    let markup = markup(&subscription, user_id).await?;
+    let markup = markup(&menu, user_id).await?;
     let text = format!("Navigation view");
     // Message to modify
     let message = q.message;
@@ -84,14 +80,14 @@ pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
 }
 ///
 /// 
-async fn markup(menu: &HashMap<String, Subscription>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(menu: &HashMap<String, MenuItem>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group
     let buttons: Vec<InlineKeyboardButton> = menu
     .iter()
-    .map(|(group_id, group)| {
+    .map(|(_id, menu_item)| {
         InlineKeyboardButton::callback(
-        group.title.clone(),
-        group_id
+        menu_item.title.clone(),
+        menu_item.command.clone(),
     )})
     .collect();
     // Separate into long and short

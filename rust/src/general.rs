@@ -76,6 +76,9 @@ pub async fn update(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSta
     // Parse and handle commands
     let chat_id = msg.chat.id;
     let input = msg.text().unwrap_or_default();
+    let user_id = state.user_id;
+    let user_name = format!("{} {}", msg.chat.first_name().unwrap_or(""), msg.chat.first_name().unwrap_or(""));
+    log::debug!("general.update | user: {} ({}), input {} ", user_name, user_id, input);
     let cmd = Command::parse(input);
     match cmd {
         //
