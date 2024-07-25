@@ -1,22 +1,16 @@
 use std::{collections::HashMap, fs, path::Path};
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{links::Links, subscription::{Owners, Subscription}, user::User};
+use crate::{links::Links, subscription::{Subscription, Subscriptions}, user::User};
 ///
 /// 
-pub enum LoadNode {
-    Links(UserId), // like Id but without disabled
-    Groups(UserId), // like EnabledId but without children
-    Subscriptions(UserId), // like EnabledId but opened now
-}
-///
-/// 
-pub async fn user_insert(user_id: u64, name: String, contact: String) -> Result<(), String> {
+pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
     let path = "./users.json";
     let new_user = User {
+        id: ChatId(user_id as i64),
         name: name.clone(),
         contact: contact.clone(),
-        address: "".to_owned(),
+        address: address.clone(),
         subscriptions: vec![],
     };
     match fs::OpenOptions::new()
@@ -38,6 +32,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: String) -> Result<
                 .and_modify(|user| {
                     user.name = name.to_owned();
                     user.contact = contact;
+                    user.address = address;
                 })
                 .or_insert(new_user);
             match serde_json::to_writer(f, &users) {
@@ -65,19 +60,19 @@ pub async fn user(user_id: u64) -> Result<User, String> {
     }
 }
 ///
-/// Returns subscription from storage
-pub async fn subscription(user_id: UserId) -> Result<Subscription, String> {
+/// Returns subscriptions from storage
+pub async fn subscriptions(user_id: UserId) -> Result<Subscriptions, String> {
     let path = "./subscription.json";
-    log::info!("DB.subscription | load subscriptions from: {:?}", path);
+    log::info!("DB.subscriptions | load subscriptions from: {:?}", path);
     match load(path) {
         Ok(groups) => {
             let groups: HashMap<String, Subscription> = groups;
-            Ok(Subscription { id: 111, parent: 0, children: vec![], title: "Subscription 111".to_owned(), descr: format!("descr"), enabled: true, banned: false, owners: Owners(UserId(1), UserId(2), UserId(3)), price: 111 })
+            Ok(groups)
             // Ok(NodeResult::Groups(groups))
         }
-        Err(err) => Err(format!("DB.subscription | Error: {:#?}", err)),
+        Err(err) => Err(format!("DB.subscriptions | Error: {:#?}", err)),
     }
-    //  Err("DB.subscription | Not implemented".to_owned())
+    //  Err("DB.subscriptions | Not implemented".to_owned())
 }
 ///
 /// Returns Links
@@ -106,7 +101,7 @@ fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
                     Ok(data)
                 }
                 Err(err) => {
-                    Err(format!("DB.load | Error in config: {:?}\n\terror: {:?}", yaml_string, err))
+                    Err(format!("DB.load | Error in: {:?}\n\terror: {:?}", yaml_string, err))
                 }
             }
         }

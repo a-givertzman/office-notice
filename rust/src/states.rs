@@ -106,9 +106,7 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
    // Insert or update info about user
    update_last_seen_full(user).await?;
    log::debug!("states.start | user {} ({})", user.full_name(), user_id);
-
-   command(bot, msg, dialogue, new_state)
-   .await
+   command(bot, msg, dialogue, new_state).await
 }
 ///
 /// 
@@ -118,18 +116,18 @@ async fn exit(bot: Bot, msg: Message) -> HandlerResult {
    Ok(())
 }
 ///
-/// ///
+/// 
 pub async fn reload(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
    dialogue.update(state).await?;
    let text =  loc("You are in the main menu");
    let chat_id = msg.chat.id;
    bot.send_message(chat_id, text)
-   .reply_markup(main_menu_markup(0))
-   .await?;
+      .reply_markup(main_menu_markup(0))
+      .await?;
    Ok(())
 }
 ///
-/// ///
+///
 // #[async_recursion]
 pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
    let chat_id = msg.chat.id;
@@ -140,7 +138,6 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
       prev_state: StartState { restarted: false },
       user_id,
    };
-
    // Update FSM
    if state != new_state {
       dialogue.update(new_state.to_owned()).await?;
@@ -157,8 +154,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
             MainMenu::Links => crate::links::enter(bot, msg, dialogue, new_state).await?,
             MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
             MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, new_state).await?,
-            MainMenu::Done => exit(bot, msg).await?,
-      
+            MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
             MainMenu::Unknown => {
       
                // Report about a possible restart and loss of context
@@ -235,18 +231,16 @@ pub fn main_menu_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
 ///
 ///
 async fn update_last_seen_full(user: &User) -> Result<(), String> {
+   log::debug!("states.update_last_seen_full | user: {} ({})", user.full_name(), user.id);
    let user_id = user.id.0;
-
    // Collect info about the new user and store in database
    let name = if let Some(last_name) = &user.last_name {
       format!("{} {}", user.first_name, last_name)
    } else {user.first_name.clone()};
-
    let contact = if let Some(username) = &user.username {
       format!(" @{}", username)
    } else {String::from("-")};
-
-   db::user_insert(user_id, name, contact).await?;
+   db::user_insert(user_id, name, Some(contact), None).await?;
    Ok(())
 }
 ///

@@ -1,15 +1,10 @@
 {
     "TKZ_SPB_GROUP": {
-        "text": "ТКЗ СПБ",
+        "title": "ТКЗ СПБ",
         "members": {
             "-4101721392": {
-                "chat_id": "-4101721392",
-                "title": "Office-group-1",
-                "name": "@Office-group"
-            },
-            "7038555815": {
-                "chat_id": 7038555815,
-                "name": "Anton"
+                "chat_id": -4101721392,
+                "name": "@Office-group-2"
             },
             "7038555815": {
                 "chat_id": 7038555815,
@@ -18,12 +13,11 @@
         }
     },
     "TKZ_OFFICE_GROUP": {
-        "text": "Office-group",
+        "title": "Office-group",
         "members": {
             "-4101721392": {
                 "chat_id": "-4101721392",
-                "title": "Office-group-1",
-                "name": "@Office-group"
+                "name": "@Office-group-1"
             },
             "7038555815": {
                 "chat_id": 7038555815,
