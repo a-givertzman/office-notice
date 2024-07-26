@@ -235,6 +235,11 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
 /// 
 pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
     // For chat messages react only command for printout group id (need for identify service chat)
+    let (user_name, user_id) = match msg.from() {
+        Some(from) => (from.full_name(), from.id.to_string()),
+        None => ("-".to_owned(), "-".to_owned()),
+    };
+    log::debug!("states.chat_message_handler | user: {} ({}), message {:?}", user_name, user_id, msg.text());
     if let Some(input) = msg.text() {
         match input.get(..5).unwrap_or_default() {
             "/chat" => {
