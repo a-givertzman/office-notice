@@ -140,16 +140,16 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
         .branch(dptree::entry().endpoint(chat_message_handler));
     let callback_query_handler = Update::filter_callback_query()
         .endpoint(callback);
-    let chat_member_update_handler = Update::filter_my_chat_member()// filter_chat_member()
-        .branch(dptree::filter(|m: ChatMemberUpdated| {
-            m.new_chat_member.is_member() //m.old_chat_member.is_left() && 
-        })
-        .endpoint(new_chat_member))
-        .branch(dptree::filter(|m: ChatMemberUpdated| {
-            m.new_chat_member.is_left() // m.old_chat_member.is_member() && 
-        })
-        .endpoint(left_chat_member),
-    );
+    // let chat_member_update_handler = Update::filter_my_chat_member()// filter_chat_member()
+    //     .branch(dptree::filter(|m: ChatMemberUpdated| {
+    //         m.new_chat_member.is_member() //m.old_chat_member.is_left() && 
+    //     })
+    //     .endpoint(new_chat_member))
+    //     .branch(dptree::filter(|m: ChatMemberUpdated| {
+    //         m.new_chat_member.is_left() // m.old_chat_member.is_member() && 
+    //     })
+    //     .endpoint(left_chat_member),
+    // );
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
         .branch(callback_query_handler)
@@ -157,26 +157,30 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
 }
 ///
 /// Callback on bot was added to chat
-async fn new_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerResult {
+pub async fn new_chat_member(chat_member: &ChatMemberUpdated) -> HandlerResult {
     let user = chat_member.old_chat_member.user.clone();
-    let telegram_group_name = chat_member.chat.title().unwrap_or("");
+    let chat_id = chat_member.chat.id;
+    let chat_id_string = chat_id.to_string();
+    let chat_name = chat_member.chat.username().unwrap_or(&chat_id_string);
+    let chat_title = chat_member.chat.title().unwrap_or(chat_name);
     // We get a "@username" mention via `mention()` method if the user has a
     // username, otherwise we create a textual mention with "Full Name" as the
     // text linking to the user
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
-    log::debug!("states.new_chat_member | user {}, chat: {}", username, telegram_group_name);
-    bot.send_message(chat_member.chat.id, format!("Welcome to {telegram_group_name} {username}!"))
-        .await?;
+    log::debug!("states.new_chat_member | MyChatMember(added): user {}, chat: {}", username, chat_name);
+    // bot.send_message(chat_member.chat.id, format!("Welcome to {telegram_group_name} {username}!")).await?;
+    db::insert_subscription(&chat_id_string, chat_title).await;
     Ok(())
 }
 ///
 /// Callback on bot was removed from chat
-async fn left_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerResult {
+pub async fn left_chat_member(chat_member: &ChatMemberUpdated) -> HandlerResult {
     let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
-    let user = chat_member.old_chat_member.user;
+    let user = &chat_member.old_chat_member.user;
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
-    log::debug!("states.left_chat_member | user {}, chat: {}", username, chat_name);
-    bot.send_message(chat_member.chat.id, format!("Goodbye {username}!")).await?;
+    log::debug!("states.left_chat_member | MyChatMember(removed):user {}, chat: {}", username, chat_name);
+    // bot.send_message(chat_member.chat.id, format!("Goodbye {username}!")).await?;
+    db::remove_subscription(chat_member.chat.id).await;
     Ok(())
 }
 ///
@@ -264,34 +268,6 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
         Some(from) => (from.full_name(), from.id.to_string()),
         None => ("-".to_owned(), "-".to_owned()),
     };
-    if let None = msg.text() {
-        let chat_id = msg.chat.id;
-        let chat_id_string = chat_id.to_string();
-        let chat_username = msg.chat.username().unwrap_or(&chat_id_string);
-        let chat_title = msg.chat.title().unwrap_or(chat_username);
-        log::debug!("states.chat_message_handler | Chat: {} ({}), message {:?}", chat_username, chat_id, msg.text());
-        log::debug!("states.chat_message_handler | Check if chat {} ({}) registered", chat_username, chat_id);
-        match db::subscriptions().await {
-            Ok(mut subscriptions) => {
-                match subscriptions.get_mut(chat_username) {
-                    Some(subscription) => {
-                        subscription.title = chat_title.to_owned();
-                    }
-                    None => {
-                        log::debug!("states.chat_message_handler | Regictering chat {} ({})...", chat_username, chat_id);
-                        let subscription = Subscription { title: chat_username.to_owned(), members: IndexMap::new() };
-                        subscriptions.insert(chat_id.to_string(), subscription);
-                        if let Err(err) = db::update_subscriptions(&subscriptions).await {
-                            log::warn!("states.chat_message_handler | Error regictering chat {} ({}): {:#?}", chat_username, chat_id, err);
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                log::debug!("states.chat_message_handler | Error: {:#?}", err);
-            }
-        }
-    }
     log::debug!("states.chat_message_handler | user: {} ({}), message {:?}", user_name, user_id, msg.text());
     if let Some(input) = msg.text() {
         match input.get(..5).unwrap_or_default() {

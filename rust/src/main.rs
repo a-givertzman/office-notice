@@ -62,19 +62,9 @@ async fn main() {
             match &upd.kind {
                 UpdateKind::MyChatMember(chat_member) => {
                     if chat_member.new_chat_member.is_member() {    //m.old_chat_member.is_left() && 
-                        let user = chat_member.old_chat_member.user.clone();
-                        let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
-                        // We get a "@username" mention via `mention()` method if the user has a
-                        // username, otherwise we create a textual mention with "Full Name" as the
-                        // text linking to the user
-                        let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
-                        log::debug!("main | MyChatMember(added): user {}, chat: {}", username, chat_name);
-                    }
-                    if chat_member.new_chat_member.is_left() { // m.old_chat_member.is_member() && 
-                        let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
-                        let user = &chat_member.old_chat_member.user;
-                        let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
-                        log::debug!("main | MyChatMember(removed): user {}, chat: {}", username, chat_name);
+                        crate::states::new_chat_member(chat_member).await;
+                    } else if chat_member.new_chat_member.is_left() { // m.old_chat_member.is_member() && 
+                        crate::states::left_chat_member(chat_member).await;
                     }
                 }
                 _ => {
