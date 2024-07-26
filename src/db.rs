@@ -31,6 +31,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&path) {
         Ok(f) => {
             let mut users = match serde_json::from_reader(f.try_clone().unwrap()) {
