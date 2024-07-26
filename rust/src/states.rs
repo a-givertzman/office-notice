@@ -137,7 +137,7 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             .branch(dptree::case![State::Subscribe(state)].endpoint(command))
             .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
         )
-        .branch(Update::filter_chat_member()
+        .branch(Update::filter_my_chat_member()// filter_chat_member()
             .branch(dptree::filter(|m: ChatMemberUpdated| {
                 m.old_chat_member.is_left() && m.new_chat_member.is_present()
             })
@@ -163,6 +163,7 @@ async fn new_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerRes
     // username, otherwise we create a textual mention with "Full Name" as the
     // text linking to the user
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+    log::debug!("states.new_chat_member | user {}, chat: {}", username, telegram_group_name);
     bot.send_message(chat_member.chat.id, format!("Welcome to {telegram_group_name} {username}!"))
         .await?;
     Ok(())
@@ -170,8 +171,10 @@ async fn new_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerRes
 ///
 /// Callback on bot was removed from chat
 async fn left_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerResult {
+    let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
     let user = chat_member.old_chat_member.user;
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+    log::debug!("states.left_chat_member | user {}, chat: {}", username, chat_name);
     bot.send_message(chat_member.chat.id, format!("Goodbye {username}!")).await?;
     Ok(())
 }
@@ -184,7 +187,7 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
         let chat_id = msg.chat.id;
         bot.send_message(chat_id, "Error, no user").await?;
         dialogue.update(StartState { restarted: false }).await?;
-        env::log(&format!("states.start | no user, chat_id: {}", chat_id)).await;
+        log::debug!("states.start | no user, chat_id: {}", chat_id);
         return Ok(());
     }
     let user = user.unwrap();
