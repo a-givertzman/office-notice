@@ -47,7 +47,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
 }
 ///
 /// 
-pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerResult {
+pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
     match msg.text() {
         Some(text) => {
             let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
@@ -61,6 +61,10 @@ pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerRe
             };
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
+                bot.send_message(state.group, text)
+                    // .edit_message_media(user_id, message_id, media)
+                    .await
+                    .map_err(|err| format!("inline::view {}", err))?;
                 // view(&bot, &msg, &state, &groups, text).await?;
                 for (_, user) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
@@ -80,6 +84,8 @@ pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerRe
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
+    let state = NoticeMenuState { user_id: state.user_id, ..Default::default()};
+    dialogue.update(state.clone()).await?;
     Ok(())
 }
 ///
