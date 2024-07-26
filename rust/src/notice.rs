@@ -61,11 +61,15 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 if let Some(group_id) = &group.id {
-                    bot.send_message(group_id.to_owned(), text).await.map_err(|err| format!("inline::view {}", err))?;
+                    if let Err(err) = bot.send_message(group_id.to_owned(), text).await {
+                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
+                    };
                 }
                 for (_, user) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
-                    bot.send_message(user.id, text).await.map_err(|err| format!("inline::view {}", err))?;
+                    if let Err(err) = bot.send_message(user.id, text).await {
+                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", user.name, user.id, err);
+                    };
                 }
             } else {
                 log::warn!("notice.notice | Group '{}' not found in the subscriptions: {:#?}", state.group, groups);
