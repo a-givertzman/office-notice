@@ -21,7 +21,6 @@ pub async fn menu(user_id: UserId) -> Result<IndexMap<String, MenuItem>, String>
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
     let path = "./users.json";
-    // let new_user = ;
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -29,28 +28,32 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
         .open(&path) {
         Ok(f) => {
             let mut users = match serde_json::from_reader(&f) {
-                Ok(value) => {
-                    let users: IndexMap<String, User> = value;
+                Ok(users) => {
                     users
                 }
                 Err(_) => {
                     IndexMap::<String, User>::new()
                 }
             };
-            let name = &name;
-            users.entry(user_id.to_string())
-                .and_modify(|user| {
+            match users.get_mut(&user_id.to_string()) {
+                Some(user) => {
                     user.name = name.to_owned();
                     user.contact = contact.clone();
                     user.address = address.clone();
-                })
-                .or_insert(User {
-                    id: ChatId(user_id as i64),
-                    name: name.clone(),
-                    contact: contact,
-                    address: address,
-                    subscriptions: vec![],
-                });
+                }
+                None => {
+                    users.insert(
+                        user_id.to_string(),
+                        User {
+                            id: ChatId(user_id as i64),
+                            name: name.clone(),
+                            contact: contact,
+                            address: address,
+                            subscriptions: vec![],
+                        } 
+                    );
+                }
+            }
             match serde_json::to_writer_pretty(f, &users) {
                 Ok(_) => Ok(()),
                 Err(err) => Err(format!("db.user_insert | User '{}' ({}) - Error {:#?}", name, user_id, err)),
