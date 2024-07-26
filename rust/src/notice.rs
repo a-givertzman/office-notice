@@ -1,42 +1,24 @@
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue, StartState}, subscription::{Subscription, Subscriptions}};
-///
-/// 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Link {
-    pub title: String,
-    pub url: String,
-}
-///
-/// 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Links {
-    pub title: Option<String>,
-    pub links: Vec<Link>,
-    #[serde(default)]
-    pub child: IndexMap<String, Links>,
-}
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// 
 #[derive(Debug, Clone)]
-pub struct NoticeState {
+pub struct NoticeMenuState {
     pub prev_state: MainState,  // Where to go on Back btn
     pub group: String,          // Group id to be noticed
-    pub text: String,           // Notice text to be sent
     pub user_id: UserId,        // User id doing notice
 }
 //
 //
-impl Default for NoticeState {
+impl Default for NoticeMenuState {
     fn default() -> Self {
-        Self { prev_state: MainState::default(), group: String::new(), text: String::new(), user_id: UserId(0) }
+        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0) }
     }
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("notice.enter | state: {:#?}", state);
     let groups =  match db::subscriptions(user_id).await {
@@ -48,7 +30,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
     };
     // log::debug!("notice.enter | groups: {:#?}", groups);
     // let state = state.to_owned();
-    if !state.group.is_empty() && state.text.is_empty() {
+    if !state.group.is_empty() {
         let text = format!("Type a text for group '{}'", state.group);
         dialogue.update(state.clone()).await?;
         bot.send_message(msg.chat.id, text)
@@ -56,12 +38,6 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
             .await
             .map_err(|err| format!("inline::view {}", err))?;
         // view(&bot, &msg, &state, &groups, text).await?;
-    } else if !state.group.is_empty() && !state.text.is_empty() {
-        // if let Some(group) = groups.get(&state.group) {
-        //     let text = format!("Sending to group '{}'", state.group);
-        //     view(&bot, &msg, &state, &groups, text).await?;
-        //     // notice(&bot, &msg, &state).await?
-        // }
     } else {
         let text = format!("Select group to notice");
         dialogue.update(state.clone()).await?;
@@ -71,32 +47,42 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
 }
 ///
 /// 
-pub async fn notice(bot: Bot, msg: Message, state: NoticeState) -> HandlerResult {
-    log::debug!("notice.notice | Sending notice from '{}': '{:?}'", state.user_id, msg.text());
-    let groups =  match db::subscriptions(state.user_id).await {
-        Ok(groups) => groups,
-        Err(err) => {
-            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
-            IndexMap::new()
+pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerResult {
+    match msg.text() {
+        Some(text) => {
+            log::debug!("notice.notice | Sending notice from '{}': '{:?}'", state.user_id, text);
+            let groups =  match db::subscriptions(state.user_id).await {
+                Ok(groups) => groups,
+                Err(err) => {
+                    log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
+                    IndexMap::new()
+                }
+            };
+            if let Some(group) = groups.get(&state.group) {
+                log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
+                // view(&bot, &msg, &state, &groups, text).await?;
+                for (_, user) in &group.members {
+                    bot.send_message(user.id, text)
+                        // .edit_message_media(user_id, message_id, media)
+                        .await
+                        .map_err(|err| format!("inline::view {}", err))?;
+                }
+            } else {
+                log::warn!("notice.notice | Group '{}' not found in the gdoups: {:#?}", state.group, groups);
+            }
         }
-    };
-    if let Some(group) = groups.get(&state.group) {
-        log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
-        // view(&bot, &msg, &state, &groups, text).await?;
-        for (_, user) in &group.members {
-            bot.send_message(user.id, &state.text)
+        None => {
+            bot.send_message(state.user_id, "Notice text can't be empty")
                 // .edit_message_media(user_id, message_id, media)
                 .await
                 .map_err(|err| format!("inline::view {}", err))?;
         }
-    } else {
-        log::warn!("notice.notice | Group '{}' not found in the gdoups: {:#?}", state.group, groups);
     }
     Ok(())
 }
 ///
 /// 
-pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: &NoticeMenuState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&groups, user_id).await?;
     bot.edit_message_text(msg.chat.id, msg.id, text)
