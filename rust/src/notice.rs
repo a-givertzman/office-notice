@@ -33,7 +33,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
     if !state.group.is_empty() {
         let text = format!("Type a text for group '{}'", state.group);
         dialogue.update(state.clone()).await?;
-        bot.send_message(msg.chat.id, text)
+        bot.edit_message_text(msg.chat.id, msg.id, text)
             // .edit_message_media(user_id, message_id, media)
             .await
             .map_err(|err| format!("inline::view {}", err))?;
@@ -84,9 +84,9 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
-    let state = NoticeMenuState { user_id: state.user_id, ..Default::default()};
+    let state = NoticeMenuState { prev_state: state.prev_state, user_id: state.user_id, ..Default::default()};
     dialogue.update(state.clone()).await?;
-    view(&bot, &msg, &state, &groups, format!("Select group to notice")).await?;
+    enter(bot, msg, dialogue, state).await?;
     Ok(())
 }
 ///
