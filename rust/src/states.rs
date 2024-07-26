@@ -400,6 +400,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         prev_state: state.prev_state,
                         group,
                         user_id: state.user_id,
+                        user: q.from
                     };
                     crate::subscribe::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }

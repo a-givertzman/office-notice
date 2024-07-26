@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions, user::User};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// 
 #[derive(Debug, Clone)]
@@ -8,22 +8,22 @@ pub struct SubscribeState {
     pub prev_state: MainState,  // Where to go on Back btn
     pub group: String,          // Group id to be noticed
     pub user_id: UserId,        // User id doing notice
+    pub user: User,
 }
 //
 //
 impl Default for SubscribeState {
     fn default() -> Self {
-        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0) }
+        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0), user: User { id: UserId(0), is_bot: false, first_name: String::new(), last_name: None, username: None, language_code: None, is_premium: false, added_to_attachment_menu: false } }
     }
 }
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
     let user_id = state.user_id;
-    let user_id_str = &user_id.to_string();
-    let user_name = msg.from().map_or(user_id_str.to_owned(), |user| user.username.clone().unwrap_or(user_id_str.to_owned()));
+    let user_name = state.user.username.clone().unwrap_or(state.user.full_name());
     log::debug!("subscribe.enter | state: {:#?}", state);
-    let mut groups =  match db::subscriptions().await {
+    let mut subscriptions =  match db::subscriptions().await {
         Ok(groups) => groups,
         Err(err) => {
             log::warn!("subscribe.enter | Groups is empty, error: {:#?}", err);
@@ -32,11 +32,12 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: Subscrib
     };
     if !state.group.is_empty() {
         // let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
-        subscribe(&mut groups, &state.group, user_id, &user_name).await?;
+        subscribe(&mut subscriptions, &state.group, user_id, &user_name).await?;
+        log::debug!("subscribe.enter | Subscription '{}' ({}) for group '{}' - updated", user_name, user_id, state.group);
     }
     let text = format!("Select group to subscribe / unsubscribe");
     dialogue.update(state.clone()).await?;
-    view(&bot, &msg, &state, &groups, text).await?;
+    view(&bot, &msg, &state, &subscriptions, text).await?;
     Ok(())
 }
 ///
@@ -53,7 +54,7 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
             }
             None => {
                 log::debug!("subscribe.subscribe | Adding subscription '{}' ({}) to the group '{}' ", user_name, user_id, group.title);
-                let user = User {
+                let user = crate::user::User {
                     id: ChatId::from(user_id),
                     name: user_name.to_owned(),
                     contact: None,
@@ -69,9 +70,6 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
     } else {
         log::warn!("subscribe.subscribe | Group '{}' not found in the subscriptions: {:#?}", group, subscriptions);
     }
-    // let state = state.prev_state;
-    // dialogue.update(state.clone()).await?;
-    // crate::states::reload(bot, msg, dialogue, state).await?;
     Ok(())
 }
 ///
@@ -94,7 +92,11 @@ async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboar
         .iter()
         .map(|(group_id, group)| {
             InlineKeyboardButton::callback(
-                group.title.clone(),
+                if group.members.contains_key(&user_id.to_string()) {
+                    format!("✅ {}", group.title)
+                } else {
+                    format!("{}", group.title)
+                },
                 format!("/{}", group_id),
         )})
         .collect();
