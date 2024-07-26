@@ -48,13 +48,20 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
     };
     log::debug!("notice.enter | groups: {:#?}", groups);
     // let state = state.to_owned();
-    if !state.group.is_empty() {
+    if !state.group.is_empty() && state.text.is_empty() {
+        let text = format!("Type a text for group '{}'", state.group);
+        view(&bot, &msg, &state, &groups, text).await?;
+    } else if !state.group.is_empty() && !state.text.is_empty() {
         if let Some(group) = groups.get(&state.group) {
+            let text = format!("Sending to group '{}'", state.group);
+            view(&bot, &msg, &state, &groups, text).await?;
             notice(&bot, &msg, &state, &group).await?
         }
+    } else {
+        let text = format!("Select group to notice");
+        // dialogue.update(state.clone()).await?;
+        view(&bot, &msg, &state, &groups, text).await?;
     }
-    dialogue.update(state.clone()).await?;
-    view(bot, msg, state, groups).await?;
     Ok(())
 }
 ///
@@ -71,10 +78,9 @@ pub async fn notice(bot: &Bot, msg: &Message, state: &NoticeState, group: &Subsc
 }
 ///
 /// 
-pub async fn view(bot: Bot, msg: Message, state: NoticeState, groups: Subscriptions) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&groups, user_id).await?;
-    let text = format!("Select group to notice");
     bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
         .reply_markup(markup)
