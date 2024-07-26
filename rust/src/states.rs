@@ -246,7 +246,9 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
                         log::debug!("states.chat_message_handler | Regictering chat {} ({})...", chat_username, chat_id);
                         let subscription = Subscription { title: chat_username.to_owned(), members: IndexMap::new() };
                         subscriptions.insert(chat_id.to_string(), subscription);
-                        db::update_subscriptions(&subscriptions);
+                        if let Err(err) = db::update_subscriptions(&subscriptions).await {
+                            log::warn!("states.chat_message_handler | Error regictering chat {} ({}): {:#?}", chat_username, chat_id, err);
+                        }
                     }
                 }
             }

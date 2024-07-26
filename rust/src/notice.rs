@@ -62,6 +62,7 @@ pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerRe
                 log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
                 // view(&bot, &msg, &state, &groups, text).await?;
                 for (_, user) in &group.members {
+                    log::warn!("notice.notice | \t member '{}' ({})", user.name, user.id);
                     bot.send_message(user.id, text)
                         // .edit_message_media(user_id, message_id, media)
                         .await

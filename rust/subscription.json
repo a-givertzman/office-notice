@@ -1,28 +1,44 @@
 {
-    "TKZ_SPB_GROUP": {
-        "title": "ТКЗ СПБ",
-        "members": {
-            "-4101721392": {
-                "chat_id": "-4101721392",
-                "name": "@Office-group-2"
-            },
-            "7038555815": {
-                "chat_id": "7038555815",
-                "name": "Anton"
-            }
-        }
-    },
-    "TKZ_OFFICE_GROUP": {
-        "title": "Office-group",
-        "members": {
-            "-4101721392": {
-                "chat_id": "-4101721392",
-                "name": "@Office-group-1"
-            },
-            "7038555815": {
-                "chat_id": "7038555815",
-                "name": "Anton"
-            }
-        }
+  "TKZ_SPB_GROUP": {
+    "title": "ТКЗ СПБ",
+    "members": {
+      "-4101721392": {
+        "id": "-4101721392",
+        "name": "@Office-group-2",
+        "contact": null,
+        "address": null,
+        "subscriptions": []
+      },
+      "7038555815": {
+        "id": "7038555815",
+        "name": "Anton",
+        "contact": null,
+        "address": null,
+        "subscriptions": []
+      }
     }
+  },
+  "TKZ_OFFICE_GROUP": {
+    "title": "Office-group",
+    "members": {
+      "-4101721392": {
+        "id": "-4101721392",
+        "name": "@Office-group-1",
+        "contact": null,
+        "address": null,
+        "subscriptions": []
+      },
+      "7038555815": {
+        "id": "7038555815",
+        "name": "Anton",
+        "contact": null,
+        "address": null,
+        "subscriptions": []
+      }
+    }
+  },
+  "-4224543713": {
+    "title": "-4224543713",
+    "members": {}
+  }
 }

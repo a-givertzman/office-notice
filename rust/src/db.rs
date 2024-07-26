@@ -53,8 +53,8 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
                 Ok(_) => Ok(()),
                 Err(err) => Err(format!("DB.user_insert | User '{}' ({}) - Error {:#?}", name, user_id, err)),
             }
-        },
-        Err(_) => todo!(),
+        }
+        Err(err) => Err(format!("DB.user_insert | Error: {:#?}", err)),
     }
 }
 ///
@@ -85,7 +85,7 @@ pub async fn update_subscriptions(subscriptions: &Subscriptions) -> Result<(), S
                 Err(err) => Err(format!("DB.update_subscriptions | Error {:#?}", err)),
             }
         },
-        Err(_) => todo!(),
+        Err(err) => Err(format!("DB.update_subscriptions | Error: {:#?}", err)),
     }
 }
 ///
