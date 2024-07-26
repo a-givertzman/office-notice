@@ -21,39 +21,38 @@ pub async fn menu(user_id: UserId) -> Result<IndexMap<String, MenuItem>, String>
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
     let path = "./users.json";
+    let mut users = match users(path).await {
+        Ok(users) => users,
+        Err(err) => {
+            log::info!("db.user | error: {:#?}", err);
+            IndexMap::<String, User>::new()
+        }
+    };
+    match users.get_mut(&user_id.to_string()) {
+        Some(user) => {
+            user.name = name.to_owned();
+            user.contact = contact.clone();
+            user.address = address.clone();
+        }
+        None => {
+            users.insert(
+                user_id.to_string(),
+                User {
+                    id: ChatId(user_id as i64),
+                    name: name.clone(),
+                    contact: contact,
+                    address: address,
+                    subscriptions: vec![],
+                } 
+            );
+        }
+    };
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(&path) {
         Ok(f) => {
-            let mut users = match serde_json::from_reader(&f) {
-                Ok(users) => {
-                    users
-                }
-                Err(_) => {
-                    IndexMap::<String, User>::new()
-                }
-            };
-            match users.get_mut(&user_id.to_string()) {
-                Some(user) => {
-                    user.name = name.to_owned();
-                    user.contact = contact.clone();
-                    user.address = address.clone();
-                }
-                None => {
-                    users.insert(
-                        user_id.to_string(),
-                        User {
-                            id: ChatId(user_id as i64),
-                            name: name.clone(),
-                            contact: contact,
-                            address: address,
-                            subscriptions: vec![],
-                        } 
-                    );
-                }
-            }
             match serde_json::to_writer_pretty(f, &users) {
                 Ok(_) => Ok(()),
                 Err(err) => Err(format!("db.user_insert | User '{}' ({}) - Error {:#?}", name, user_id, err)),
@@ -79,6 +78,18 @@ pub async fn user(user_id: u64) -> Result<User, String> {
         Err(err) => Err(format!("db.user | Error: {:#?}", err)),
     }
 }
+///
+/// Returns users from storage
+pub async fn users(path: impl AsRef<Path>) -> Result<IndexMap<String, User>, String> {
+    log::info!("db.users | load users from: {:?}", path.as_ref());
+    match load(path) {
+        Ok(users) => {
+            Ok(users)
+        }
+        Err(err) => Err(format!("db.users | Error: {:#?}", err)),
+    }
+}
+
 ///
 /// 
 pub async fn insert_subscription(chat_id: &str, chat_title: &str) -> Result<(), String> {
