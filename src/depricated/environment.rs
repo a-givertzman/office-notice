@@ -1,9 +1,9 @@
 use std::env;
 
-use chrono::{FixedOffset, NaiveDateTime, Utc,};
-use once_cell::sync::{OnceCell};
+use chrono::FixedOffset;
+use once_cell::sync::OnceCell;
 use teloxide::{
-    prelude::*, types::{Recipient, ChatId, UserId, MessageId},
+    prelude::*, types::{Recipient, ChatId, MessageId},
 };
 ///
 /// Settings

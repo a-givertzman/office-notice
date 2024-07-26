@@ -9,7 +9,7 @@ pub struct AppConfig {
 impl AppConfig {
     ///
     /// Reads config from path
-    pub fn read(parent: impl Into<String>, path: impl AsRef<Path>) -> Self {
+    pub fn read(path: impl AsRef<Path>) -> Self {
         match fs::read_to_string(&path) {
             Ok(yaml_string) => {
                 log::info!("BotConfig.read | Path to config: {:?}", path.as_ref());

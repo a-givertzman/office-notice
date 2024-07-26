@@ -2,8 +2,7 @@
 //! Callback from inline button
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
-use crate::{menu, states::*};
-use crate::loc::*;
+use crate::states::*;
 ///
 /// 
 #[derive(BotCommands )]

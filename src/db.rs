@@ -60,6 +60,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
 }
 ///
 /// Returns user from storage
+#[allow(unused)]
 pub async fn user(user_id: u64) -> Result<User, String> {
     let path = "./users.json";
     log::info!("db.user | config: {:?}", path);

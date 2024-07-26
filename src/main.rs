@@ -1,11 +1,9 @@
 mod config;
 mod general;
 mod loc;
-mod environment;
 mod links;
 mod notice;
 mod subscribe;
-mod callback;
 mod menu;
 mod subscription;
 mod db;
@@ -28,9 +26,9 @@ where
         let text = format!("main::handle_error: {:?}", error);
         log::error!("{}", text);
         let fut = async move {
-            if environment::log(&text).await.is_none() {
-                log::info!("main::Unable to send message to the service chat");
-            };
+            log::info!("main::Unable to send message to the service chat");
+            // if environment::log(&text).await.is_none() {
+            // };
         };
         Box::pin(fut)
    }
@@ -65,17 +63,10 @@ async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     pretty_env_logger::init();
     log::info!("Starting dialogue bot...");
-    let config = AppConfig::read("", "./config.yaml");
+    let config = AppConfig::read("./config.yaml");
     log::info!("config: {:#?}", config);
     env::set_var("TELOXIDE_TOKEN", config.bot.connection.token);
-    // let bot = Bot::new(config.bot.connection.token);
     let bot = Bot::from_env();
-    // Settings from environments
-    let vars = environment::Vars::from_env(bot.clone()).await;
-    match environment::VARS.set(vars) {
-        Ok(_) => {environment::log("Bot restarted").await;},
-        _ => log::info!("Something wrong with TELEGRAM_LdOG_CHAT"),
-    }    
     Dispatcher::builder(bot.clone(), states::schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
         // All unhandled updates redirects to the default_handler
