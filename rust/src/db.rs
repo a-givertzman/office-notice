@@ -73,20 +73,33 @@ pub async fn user(user_id: u64) -> Result<User, String> {
         Err(err) => Err(format!("DB.user | Error: {:#?}", err)),
     }
 }
+pub async fn update_subscriptions(subscriptions: &Subscriptions) -> Result<(), String> {
+    let path = "./subscription.json";
+    match fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&path) {
+        Ok(f) => {
+            match serde_json::to_writer_pretty(f, &subscriptions) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(format!("DB.update_subscriptions | Error {:#?}", err)),
+            }
+        },
+        Err(_) => todo!(),
+    }
+}
 ///
 /// Returns subscriptions from storage
-pub async fn subscriptions(user_id: UserId) -> Result<Subscriptions, String> {
+pub async fn subscriptions() -> Result<Subscriptions, String> {
     let path = "./subscription.json";
     log::info!("DB.subscriptions | load subscriptions from: {:?}", path);
     match load(path) {
         Ok(groups) => {
             let groups: IndexMap<String, Subscription> = groups;
             Ok(groups)
-            // Ok(NodeResult::Groups(groups))
         }
         Err(err) => Err(format!("DB.subscriptions | Error: {:#?}", err)),
     }
-    //  Err("DB.subscriptions | Not implemented".to_owned())
 }
 ///
 /// Returns Links

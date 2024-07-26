@@ -18,7 +18,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainStat
     let user_id = state.user_id; // user needs to sync with cart
     let chat_id = msg.chat.id;
     // Load user info
-    let subscriptions =  db::subscriptions(user_id).await?;
+    let subscriptions =  db::subscriptions().await?;
     // Display
     let state = SubscribeState {
         prev_state: state,
@@ -52,7 +52,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainStat
     let user_id = q.from.id;
     log::debug!("menu.view | user_id: {}", user_id);
     // Load from storage
-    let subscription =  db::subscriptions(user_id).await?;
+    let subscription =  db::subscriptions().await?;
     // // Collect info
     let markup = markup(&subscription, user_id).await?;
     let text = format!("Navigation view");

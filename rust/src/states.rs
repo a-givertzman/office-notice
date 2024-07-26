@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
-use crate::{db, environment as env, links::LinksState, menu, notice::{self, NoticeMenuState}, subscribe::SubscribeState};
+use crate::{db, environment as env, links::LinksState, menu, notice::{self, NoticeMenuState}, subscribe::SubscribeState, subscription::Subscription};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -229,6 +229,32 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
         Some(from) => (from.full_name(), from.id.to_string()),
         None => ("-".to_owned(), "-".to_owned()),
     };
+    if let None = msg.text() {
+        let chat_id = msg.chat.id;
+        let chat_id_string = chat_id.to_string();
+        let chat_username = msg.chat.username().unwrap_or(&chat_id_string);
+        let chat_title = msg.chat.title().unwrap_or(chat_username);
+        log::debug!("states.chat_message_handler | Chat: {} ({}), message {:?}", chat_username, chat_id, msg.text());
+        log::debug!("states.chat_message_handler | Check if chat {} ({}) registered", chat_username, chat_id);
+        match db::subscriptions().await {
+            Ok(mut subscriptions) => {
+                match subscriptions.get_mut(chat_username) {
+                    Some(subscription) => {
+                        subscription.title = chat_title.to_owned();
+                    }
+                    None => {
+                        log::debug!("states.chat_message_handler | Regictering chat {} ({})...", chat_username, chat_id);
+                        let subscription = Subscription { title: chat_username.to_owned(), members: IndexMap::new() };
+                        subscriptions.insert(chat_id.to_string(), subscription);
+                        db::update_subscriptions(&subscriptions);
+                    }
+                }
+            }
+            Err(err) => {
+                log::debug!("states.chat_message_handler | Error: {:#?}", err);
+            }
+        }
+    }
     log::debug!("states.chat_message_handler | user: {} ({}), message {:?}", user_name, user_id, msg.text());
     if let Some(input) = msg.text() {
         match input.get(..5).unwrap_or_default() {

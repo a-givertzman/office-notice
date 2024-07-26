@@ -21,7 +21,7 @@ impl Default for NoticeMenuState {
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("notice.enter | state: {:#?}", state);
-    let groups =  match db::subscriptions(user_id).await {
+    let groups =  match db::subscriptions().await {
         Ok(groups) => groups,
         Err(err) => {
             log::warn!("notice.enter | Groups is empty, error: {:#?}", err);
@@ -51,7 +51,7 @@ pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerRe
     match msg.text() {
         Some(text) => {
             log::debug!("notice.notice | Sending notice from '{}': '{:?}'", state.user_id, text);
-            let groups =  match db::subscriptions(state.user_id).await {
+            let groups =  match db::subscriptions().await {
                 Ok(groups) => groups,
                 Err(err) => {
                     log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
