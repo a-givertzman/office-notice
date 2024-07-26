@@ -48,17 +48,17 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
 ///
 /// 
 pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
+    let groups =  match db::subscriptions().await {
+        Ok(groups) => groups,
+        Err(err) => {
+            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
+            IndexMap::new()
+        }
+    };
     match msg.text() {
         Some(text) => {
             let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
             log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
-            let groups =  match db::subscriptions().await {
-                Ok(groups) => groups,
-                Err(err) => {
-                    log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
-                    IndexMap::new()
-                }
-            };
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 bot.send_message(state.group, text)
@@ -86,6 +86,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
     }
     let state = NoticeMenuState { user_id: state.user_id, ..Default::default()};
     dialogue.update(state.clone()).await?;
+    view(&bot, &msg, &state, &groups, format!("Select group to notice")).await?;
     Ok(())
 }
 ///
