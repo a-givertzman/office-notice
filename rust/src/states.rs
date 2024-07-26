@@ -127,22 +127,53 @@ impl NoticeMenu {
 /// 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
     let message_handler = Update::filter_message()
-    .branch(
-        // Private message handler
-        dptree::filter(|msg: Message| { msg.chat.is_private() })
-        .branch(dptree::case![State::Start(state)].endpoint(start))
-        .branch(dptree::case![State::Main(state)].endpoint(start))
-        .branch(dptree::case![State::Links(state)].endpoint(command))
-        .branch(dptree::case![State::NoticeMenu(state)].endpoint(notice::notice))
-        .branch(dptree::case![State::Subscribe(state)].endpoint(command))
-        .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
-    )
+        .branch(
+            // Private message handler
+            dptree::filter(|msg: Message| { msg.chat.is_private() })
+            .branch(dptree::case![State::Start(state)].endpoint(start))
+            .branch(dptree::case![State::Main(state)].endpoint(start))
+            .branch(dptree::case![State::Links(state)].endpoint(command))
+            .branch(dptree::case![State::NoticeMenu(state)].endpoint(notice::notice))
+            .branch(dptree::case![State::Subscribe(state)].endpoint(command))
+            .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
+        )
+        .branch(Update::filter_chat_member()
+            .branch(dptree::filter(|m: ChatMemberUpdated| {
+                m.old_chat_member.is_left() && m.new_chat_member.is_present()
+            })
+            .endpoint(new_chat_member))
+            .branch(dptree::filter(|m: ChatMemberUpdated| {
+                m.old_chat_member.is_present() && m.new_chat_member.is_left()
+            })
+            .endpoint(left_chat_member),
+        ))
         .branch(dptree::entry().endpoint(chat_message_handler));
     let callback_query_handler = Update::filter_callback_query()
         .endpoint(callback);
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
-    .branch(message_handler)
-    .branch(callback_query_handler)
+        .branch(message_handler)
+        .branch(callback_query_handler)
+}
+///
+/// Callback on bot was added to chat
+async fn new_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerResult {
+    let user = chat_member.old_chat_member.user.clone();
+    let telegram_group_name = chat_member.chat.title().unwrap_or("");
+    // We get a "@username" mention via `mention()` method if the user has a
+    // username, otherwise we create a textual mention with "Full Name" as the
+    // text linking to the user
+    let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+    bot.send_message(chat_member.chat.id, format!("Welcome to {telegram_group_name} {username}!"))
+        .await?;
+    Ok(())
+}
+///
+/// Callback on bot was removed from chat
+async fn left_chat_member(bot: Bot, chat_member: ChatMemberUpdated) -> HandlerResult {
+    let user = chat_member.old_chat_member.user;
+    let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+    bot.send_message(chat_member.chat.id, format!("Goodbye {username}!")).await?;
+    Ok(())
 }
 ///
 /// Command | Start
