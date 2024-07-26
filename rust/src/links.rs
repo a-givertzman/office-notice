@@ -60,6 +60,7 @@ pub async fn view(bot: Bot, msg: Message, state: LinksState, links: Links) -> Ha
 ///
 /// 
 async fn markup(links: &Links, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+    let _ = user_id;
     let mut buttons: Vec<InlineKeyboardButton> = links.links
         .iter()
         .map(|link| {
@@ -83,7 +84,8 @@ async fn markup(links: &Links, user_id: UserId) -> Result<InlineKeyboardMarkup, 
         format!("/back")
     );
     buttons.push(button_back);
-    let markup = buttons.into_iter()
-    .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
+    let markup = buttons
+        .into_iter()
+        .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
     Ok(markup)
 }

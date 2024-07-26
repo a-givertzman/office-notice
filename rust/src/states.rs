@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
-use crate::{db, environment as env, links::LinksState, menu, notice::{self, NoticeMenuState}, subscribe::SubscribeState, subscription::Subscription};
+use crate::{db, links::LinksState, menu, notice::{self, NoticeState}, subscribe::SubscribeState};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -19,7 +19,7 @@ pub enum State {
    Start(StartState),   // initial state
    Main(MainState),     // main menu state
    Links(LinksState),   // in Links menu
-   NoticeMenu(NoticeMenuState),         // in Notice menu
+   NoticeMenu(NoticeState),         // in Notice menu
    Subscribe(SubscribeState),    // in Subscribe menu
    GeneralMessage(MessageState), // general commands, enter text of message to send
 }
@@ -98,6 +98,28 @@ impl LinksMenu {
             "/back" => Self::Done,
             "/exit" => Self::Done,
             _ => Self::Link(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        }
+   }
+}
+///
+/// Subscribe menu
+#[derive(Debug, Clone, PartialEq)]
+enum SubscribeMenu {
+   Group(String),   // Selected group to subscribe on
+   Unknown(String), // Unknown command received
+   Done,            // Exit menu
+}
+//
+//
+impl SubscribeMenu {
+   fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
+        match input {
+            ("/", "done" | "Done") => Self::Done,
+            ("/", "back" | "Back") => Self::Done,
+            ("/", "exit" | "Exit") => Self::Done,
+            ("/", input) => Self::Group(input.to_owned()),
+            (_, _) => Self::Unknown(s.to_owned()),
         }
    }
 }
@@ -240,7 +262,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
                 MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id}).await?,
-                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeMenuState { prev_state: new_state, user_id, ..Default::default()}).await?,
+                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
                 MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
                 MainMenu::Unknown => {
@@ -303,7 +325,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Notice => {
-                    let state = NoticeMenuState { prev_state: state, user_id, ..Default::default() };
+                    let state = NoticeState { prev_state: state, user_id, ..Default::default() };
                     crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
@@ -344,7 +366,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             match cmd {
                 NoticeMenu::Group(group) => {
                     log::debug!("states.callback | Notice > Notice Will send to the: '{}' group", group);
-                    let state = NoticeMenuState {
+                    let state = NoticeState {
                         prev_state: state.prev_state,
                         group,
                         user_id: state.user_id,
@@ -361,8 +383,35 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
             }
         }
-        State::Subscribe(_) => todo!(),
-        State::GeneralMessage(_) => todo!(),
+        State::Subscribe(state) => {
+            log::debug!("states.callback | Notice > state: {:#?}", state);
+            let input = q.data.to_owned().unwrap_or_default();
+            log::debug!("states.callback | Notice > Input: {}", input);
+            let cmd = SubscribeMenu::parse(&input, 0);
+            log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
+            match cmd {
+                SubscribeMenu::Group(group) => {
+                    log::debug!("states.callback | Notice > Notice Will send to the: '{}' group", group);
+                    let state = SubscribeState {
+                        prev_state: state.prev_state,
+                        group,
+                        user_id: state.user_id,
+                    };
+                    crate::subscribe::enter(bot, q.message.unwrap(), dialogue, state).await?
+                }
+                SubscribeMenu::Unknown(text) => {
+                    log::debug!("states.callback | Notice > Unknown command received: '{}'", text);
+                    crate::subscribe::enter(bot, q.message.unwrap(), dialogue, state).await?
+                }
+                SubscribeMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
+                _ => {
+                    log::debug!("states.callback | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
+                }
+            }            
+        }
+        State::GeneralMessage(state) => {
+            log::debug!("states.callback | GeneralMessage > receiver: {}", state.receiver);
+        },
     }
     Ok(())
 }

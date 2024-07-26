@@ -1,116 +1,120 @@
-use arraylib::iter::IteratorExt;
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, UserId}
-};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscription};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// 
 #[derive(Debug, Clone)]
 pub struct SubscribeState {
-   pub prev_state: MainState,
-   pub user_id: UserId,
+    pub prev_state: MainState,  // Where to go on Back btn
+    pub group: String,          // Group id to be noticed
+    pub user_id: UserId,        // User id doing notice
+}
+//
+//
+impl Default for SubscribeState {
+    fn default() -> Self {
+        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0) }
+    }
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
-    let user_id = state.user_id; // user needs to sync with cart
-    let chat_id = msg.chat.id;
-    // Load user info
-    let subscriptions =  db::subscriptions().await?;
-    // Display
-    let state = SubscribeState {
-        prev_state: state,
-        user_id: state.user_id,
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
+    let user_id = state.user_id;
+    log::debug!("notice.enter | state: {:#?}", state);
+    let groups =  match db::subscriptions().await {
+        Ok(groups) => groups,
+        Err(err) => {
+            log::warn!("notice.enter | Groups is empty, error: {:#?}", err);
+            IndexMap::new()
+        }
     };
-    // All is ok, collect and display info
-    let markup = markup(&subscriptions, user_id).await?;
-    let text = "Subscribe menu";
-    let state = state.to_owned();
-    dialogue.update(state.clone()).await?;
-    bot.send_message(chat_id, text)
-    // .caption(text)
-    .reply_markup(markup)
-    .parse_mode(ParseMode::Html)
-    // .disable_notification(true)
-    .await?;
-    Ok(())
-    // view(bot, msg, state).await
-}
- ///
- ///
- async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
-    bot.send_message(user_id, text)
-    .await
-    .map_err(|err| format!("inline::msg {}", err))?;
-    Ok(())
- }
- ///
- /// 
- pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
-    let user_id = q.from.id;
-    log::debug!("menu.view | user_id: {}", user_id);
-    // Load from storage
-    let subscription =  db::subscriptions().await?;
-    // // Collect info
-    let markup = markup(&subscription, user_id).await?;
-    let text = format!("Navigation view");
-    // Message to modify
-    let message = q.message;
-    if message.is_none() {
-       // "Error, update message is invalid, please start again"
-       let text = loc("Error, update message is invalid, please start again");
-       msg(bot, user_id, &text).await?;
-       return Ok(())
+    if !state.group.is_empty() {
+        let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
+        let text = format!("Type a text for group '{}'", group_title);
+        dialogue.update(state.clone()).await?;
+        bot.edit_message_text(msg.chat.id, msg.id, text)
+            // .edit_message_media(user_id, message_id, media)
+            .await
+            .map_err(|err| format!("inline::view {}", err))?;
+        // view(&bot, &msg, &state, &groups, text).await?;
+    } else {
+        let text = format!("Select group to notice");
+        dialogue.update(state.clone()).await?;
+        view(&bot, &msg, &state, &groups, text).await?;
     }
-    // let chat_id = ChatId::Id(message.chat_id());
-    let message_id = message.unwrap().id;
-    msg(bot, user_id, &text).await?;
-    bot.edit_message_text(user_id, message_id, text)
+    Ok(())
+}
+///
+/// 
+pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
+    let groups =  match db::subscriptions().await {
+        Ok(groups) => groups,
+        Err(err) => {
+            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
+            IndexMap::new()
+        }
+    };
+    match msg.text() {
+        Some(text) => {
+            let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
+            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
+            if let Some(group) = groups.get(&state.group) {
+                log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
+                if let Some(group_id) = &group.id {
+                    if let Err(err) = bot.send_message(group_id.to_owned(), text).await {
+                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
+                    };
+                }
+                for (_, user) in &group.members {
+                    log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
+                    if let Err(err) = bot.send_message(user.id, text).await {
+                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", user.name, user.id, err);
+                    };
+                }
+            } else {
+                log::warn!("notice.notice | Group '{}' not found in the subscriptions: {:#?}", state.group, groups);
+            }
+        }
+        None => {
+            bot.send_message(state.user_id, "Notice text can't be empty")
+                .await
+                .map_err(|err| format!("inline::view {}", err))?;
+        }
+    }
+    let state = state.prev_state;
+    dialogue.update(state.clone()).await?;
+    crate::states::reload(bot, msg, dialogue, state).await?;
+    Ok(())
+}
+///
+/// 
+pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
+    let user_id = state.user_id;
+    let markup = markup(&groups, user_id).await?;
+    bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
         .reply_markup(markup)
-    .await
-    .map_err(|err| format!("inline::view {}", err))?;
+        .await
+        .map_err(|err| format!("inline::view {}", err))?;
     Ok(())
- }
- ///
- /// 
- async fn markup(subscriptions: &IndexMap<String, Subscription>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
-   // Create buttons for each group
-   let buttons: Vec<InlineKeyboardButton> = subscriptions
-   .iter()
-   .map(|(group_id, group)| {
-      InlineKeyboardButton::callback(
-      group.title.clone(),
-      group_id
-   )})
-   .collect();
-   // Separate into long and short
-   let (long, mut short) : (Vec<_>, Vec<_>) = buttons
-   .into_iter()
-   .partition(|n| n.text.chars().count() > 21);
-   // Put in vec last unpaired button, if any
-   let mut last_row = vec![];
-   if short.len() % 2 == 1 {
-      let unpaired = short.pop();
-      if unpaired.is_some() {
-         last_row.push(unpaired.unwrap());
-      }
-   }
-   // Long buttons by one in row
-   let markup = long.into_iter()
-   .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
-   // Short by two
-   let mut markup = IteratorExt::array_chunks::<[_; 2]>(short.into_iter())
-   .fold(markup, |acc, [left, right]| acc.append_row(vec![left, right]));
-   // Back button
-   let button_back = InlineKeyboardButton::callback(
-      loc("⏪Back"), // "⏪Back"
-      format!("Back")
-   );
-   last_row.push(button_back);
-   // Add the last unpaired button and the back button
-   if !last_row.is_empty() {
-      markup = markup.append_row(last_row);
-   }
-   Ok(markup)
- }
+}
+///
+/// 
+async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+    let mut buttons: Vec<InlineKeyboardButton> = groups
+        .iter()
+        .map(|(group_id, group)| {
+            InlineKeyboardButton::callback(
+                group.title.clone(),
+                format!("/{}", group_id),
+        )})
+        .collect();
+    let button_back = InlineKeyboardButton::callback(
+        loc("⏪Back"), // "⏪Back"
+        format!("/back")
+    );
+    buttons.push(button_back);
+    let markup = buttons.into_iter()
+    .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
+    Ok(markup)
+}

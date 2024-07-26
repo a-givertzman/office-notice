@@ -4,21 +4,21 @@ use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscr
 ///
 /// 
 #[derive(Debug, Clone)]
-pub struct NoticeMenuState {
+pub struct NoticeState {
     pub prev_state: MainState,  // Where to go on Back btn
     pub group: String,          // Group id to be noticed
     pub user_id: UserId,        // User id doing notice
 }
 //
 //
-impl Default for NoticeMenuState {
+impl Default for NoticeState {
     fn default() -> Self {
         Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0) }
     }
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("notice.enter | state: {:#?}", state);
     let groups =  match db::subscriptions().await {
@@ -46,7 +46,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
 }
 ///
 /// 
-pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMenuState) -> HandlerResult {
+pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
     let groups =  match db::subscriptions().await {
         Ok(groups) => groups,
         Err(err) => {
@@ -88,7 +88,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
 }
 ///
 /// 
-pub async fn view(bot: &Bot, msg: &Message, state: &NoticeMenuState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&groups, user_id).await?;
     bot.edit_message_text(msg.chat.id, msg.id, text)
