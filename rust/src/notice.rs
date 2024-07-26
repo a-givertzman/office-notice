@@ -60,25 +60,22 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
             log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
-                bot.send_message(state.group, text)
-                    // .edit_message_media(user_id, message_id, media)
-                    .await
-                    .map_err(|err| format!("inline::view {}", err))?;
-                // view(&bot, &msg, &state, &groups, text).await?;
+                match &group.id {
+                    Some(group_id) => {
+                        bot.send_message(group_id.to_owned(), text).await.map_err(|err| format!("inline::view {}", err))?;
+                    }
+                    None => todo!(),
+                }
                 for (_, user) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
-                    bot.send_message(user.id, text)
-                        // .edit_message_media(user_id, message_id, media)
-                        .await
-                        .map_err(|err| format!("inline::view {}", err))?;
+                    bot.send_message(user.id, text).await.map_err(|err| format!("inline::view {}", err))?;
                 }
             } else {
-                log::warn!("notice.notice | Group '{}' not found in the gdoups: {:#?}", state.group, groups);
+                log::warn!("notice.notice | Group '{}' not found in the subscriptions: {:#?}", state.group, groups);
             }
         }
         None => {
             bot.send_message(state.user_id, "Notice text can't be empty")
-                // .edit_message_media(user_id, message_id, media)
                 .await
                 .map_err(|err| format!("inline::view {}", err))?;
         }
