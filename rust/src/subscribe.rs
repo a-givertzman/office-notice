@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions, user::User};
 ///
 /// 
 #[derive(Debug, Clone)]
@@ -20,70 +20,58 @@ impl Default for SubscribeState {
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
     let user_id = state.user_id;
-    log::debug!("notice.enter | state: {:#?}", state);
-    let groups =  match db::subscriptions().await {
+    let user_id_str = &user_id.to_string();
+    let user_name = msg.from().map_or(user_id_str.to_owned(), |user| user.username.clone().unwrap_or(user_id_str.to_owned()));
+    log::debug!("subscribe.enter | state: {:#?}", state);
+    let mut groups =  match db::subscriptions().await {
         Ok(groups) => groups,
         Err(err) => {
-            log::warn!("notice.enter | Groups is empty, error: {:#?}", err);
+            log::warn!("subscribe.enter | Groups is empty, error: {:#?}", err);
             IndexMap::new()
         }
     };
     if !state.group.is_empty() {
-        let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
-        let text = format!("Type a text for group '{}'", group_title);
-        dialogue.update(state.clone()).await?;
-        bot.edit_message_text(msg.chat.id, msg.id, text)
-            // .edit_message_media(user_id, message_id, media)
-            .await
-            .map_err(|err| format!("inline::view {}", err))?;
-        // view(&bot, &msg, &state, &groups, text).await?;
-    } else {
-        let text = format!("Select group to notice");
-        dialogue.update(state.clone()).await?;
-        view(&bot, &msg, &state, &groups, text).await?;
+        // let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
+        subscribe(&mut groups, &state.group, user_id, &user_name);
     }
+    let text = format!("Select group to subscribe / unsubscribe");
+    dialogue.update(state.clone()).await?;
+    view(&bot, &msg, &state, &groups, text).await?;
     Ok(())
 }
 ///
 /// 
-pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
-    let groups =  match db::subscriptions().await {
-        Ok(groups) => groups,
-        Err(err) => {
-            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
-            IndexMap::new()
-        }
-    };
-    match msg.text() {
-        Some(text) => {
-            let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
-            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
-            if let Some(group) = groups.get(&state.group) {
-                log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
-                if let Some(group_id) = &group.id {
-                    if let Err(err) = bot.send_message(group_id.to_owned(), text).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
-                    };
+pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: UserId, user_name: &str) -> HandlerResult {
+    if let Some(group) = subscriptions.get_mut(group) {
+        let user_id_str = &user_id.to_string();
+        match group.members.get(user_id_str) {
+            Some(_) => {
+                log::debug!("subscribe.subscribe | Removing subscription '{}' ({}) from group '{}'", user_name, user_id, group.title);
+                if let None = group.members.shift_remove(user_id_str) {
+                    log::debug!("subscribe.subscribe | Error removing subscription '{}' ({}) from group '{}' - key not found", user_name, user_id, group.title);
                 }
-                for (_, user) in &group.members {
-                    log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
-                    if let Err(err) = bot.send_message(user.id, text).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", user.name, user.id, err);
-                    };
+            }
+            None => {
+                log::debug!("subscribe.subscribe | Adding subscription '{}' ({}) to the group '{}' ", user_name, user_id, group.title);
+                let user = User {
+                    id: ChatId::from(user_id),
+                    name: user_name.to_owned(),
+                    contact: None,
+                    address: None,
+                    subscriptions: vec![],
+                };
+                if let Some(origin) = group.members.insert(user_id_str.to_owned(), user) {
+                    log::warn!("subscribe.subscribe | Error adding subscription '{}' ({}) to the group '{}' - olready exists", user_name, user_id, group.title);
+                    group.members.insert(user_id_str.to_owned(), origin);
                 }
-            } else {
-                log::warn!("notice.notice | Group '{}' not found in the subscriptions: {:#?}", state.group, groups);
             }
         }
-        None => {
-            bot.send_message(state.user_id, "Notice text can't be empty")
-                .await
-                .map_err(|err| format!("inline::view {}", err))?;
-        }
+    } else {
+        log::warn!("subscribe.subscribe | Group '{}' not found in the subscriptions: {:#?}", group, subscriptions);
     }
-    let state = state.prev_state;
-    dialogue.update(state.clone()).await?;
-    crate::states::reload(bot, msg, dialogue, state).await?;
+    // let state = state.prev_state;
+    // dialogue.update(state.clone()).await?;
+    // crate::states::reload(bot, msg, dialogue, state).await?;
     Ok(())
 }
 ///
@@ -101,6 +89,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Sub
 ///
 /// 
 async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+    let _ = user_id;
     let mut buttons: Vec<InlineKeyboardButton> = groups
         .iter()
         .map(|(group_id, group)| {
@@ -115,6 +104,6 @@ async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboar
     );
     buttons.push(button_back);
     let markup = buttons.into_iter()
-    .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
+        .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
     Ok(markup)
 }

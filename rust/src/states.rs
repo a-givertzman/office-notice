@@ -263,7 +263,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
             match cmd {
                 MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id}).await?,
                 MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
-                MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
+                MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
