@@ -67,6 +67,7 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
                 }
             }
         }
+        db::update_subscriptions(subscriptions).await?;
     } else {
         log::warn!("subscribe.subscribe | Group '{}' not found in the subscriptions: {:#?}", group, subscriptions);
     }
