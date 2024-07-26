@@ -137,22 +137,23 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             .branch(dptree::case![State::Subscribe(state)].endpoint(command))
             .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
         )
-        .branch(Update::filter_my_chat_member()// filter_chat_member()
-            .branch(dptree::filter(|m: ChatMemberUpdated| {
-                m.old_chat_member.is_left() && m.new_chat_member.is_present()
-            })
-            .endpoint(new_chat_member))
-            .branch(dptree::filter(|m: ChatMemberUpdated| {
-                m.old_chat_member.is_present() && m.new_chat_member.is_left()
-            })
-            .endpoint(left_chat_member),
-        ))
         .branch(dptree::entry().endpoint(chat_message_handler));
     let callback_query_handler = Update::filter_callback_query()
         .endpoint(callback);
+    let chat_member_update_handler = Update::filter_my_chat_member()// filter_chat_member()
+        .branch(dptree::filter(|m: ChatMemberUpdated| {
+            m.new_chat_member.is_member() //m.old_chat_member.is_left() && 
+        })
+        .endpoint(new_chat_member))
+        .branch(dptree::filter(|m: ChatMemberUpdated| {
+            m.new_chat_member.is_left() // m.old_chat_member.is_member() && 
+        })
+        .endpoint(left_chat_member),
+    );
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
         .branch(callback_query_handler)
+        // .branch(chat_member_update_handler)
 }
 ///
 /// Callback on bot was added to chat

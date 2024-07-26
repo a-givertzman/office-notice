@@ -16,7 +16,7 @@ use std::{env, fmt::Debug, process::Command, sync::Arc};
 use futures::future::BoxFuture;
 use config::AppConfig;
 use states::State;
-use teloxide::{dispatching::dialogue::InMemStorage, error_handlers::ErrorHandler, prelude::*};
+use teloxide::{dispatching::dialogue::InMemStorage, error_handlers::ErrorHandler, prelude::*, types::UpdateKind};
 ///
 ///
 struct MyErrorHandler {}
@@ -58,18 +58,36 @@ async fn main() {
     }    
     Dispatcher::builder(bot.clone(), states::schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
-        // .default_handler(|upd| async move {
-        //    environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
-        // })
+        .default_handler(|upd| async move {
+            match &upd.kind {
+                UpdateKind::MyChatMember(chat_member) => {
+                    if chat_member.new_chat_member.is_member() {    //m.old_chat_member.is_left() && 
+                        let user = chat_member.old_chat_member.user.clone();
+                        let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
+                        // We get a "@username" mention via `mention()` method if the user has a
+                        // username, otherwise we create a textual mention with "Full Name" as the
+                        // text linking to the user
+                        let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+                        log::debug!("main | MyChatMember(added): user {}, chat: {}", username, chat_name);
+                    }
+                    if chat_member.new_chat_member.is_left() { // m.old_chat_member.is_member() && 
+                        let chat_name = format!("{} ({})", chat_member.chat.username().unwrap_or("-"), chat_member.chat.id);
+                        let user = &chat_member.old_chat_member.user;
+                        let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
+                        log::debug!("main | MyChatMember(removed): user {}, chat: {}", username, chat_name);
+                    }
+                }
+                _ => {
+                    log::warn!("main | Unhandled update: {:?}", upd);
+                    // environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
+                }
+            }
+        })
         // If the dispatcher fails for some reason, execute this handler.
         .error_handler(Arc::new(MyErrorHandler{}))
         .enable_ctrlc_handler()
         .build()
         .dispatch()
-        // .dispatch_with_listener(
-        //    update_listener,
-        //    LoggingErrorHandler::with_custom_text("main::An error from the update listener"),
-        // )
         .await;
 }
 ///
