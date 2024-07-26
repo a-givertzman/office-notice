@@ -26,18 +26,16 @@ pub struct MenuItem {
 pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
     let user_id = state.user_id; // user needs to sync with cart
     let chat_id = msg.chat.id;
-    // Load groups
     let menu =  db::menu(user_id).await?;
-    // All is ok, collect and display info
     let markup = markup(&menu, user_id).await?;
     let text = "Main menu";
     bot.send_message(chat_id, text)
-    // .caption(text)
-    .reply_markup(markup)
-    .parse_mode(ParseMode::Html)
-    // .disable_notification(true)
-    .await?;
-        Ok(())
+        // .caption(text)
+        .reply_markup(markup)
+        .parse_mode(ParseMode::Html)
+        // .disable_notification(true)
+        .await?;
+    Ok(())
 }
 ///
 ///
