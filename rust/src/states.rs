@@ -113,12 +113,24 @@ enum NoticeMenu {
 //
 impl NoticeMenu {
    fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
-        match s.to_lowercase().as_str() {
-            "/done" => Self::Done,
-            "/back" => Self::Done,
-            "/exit" => Self::Done,
-            _ => Self::Notice(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        let input = s.to_lowercase();
+        let input = input.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
+        match input {
+            ("/", "done") => Self::Done,
+            ("/", "back") => Self::Done,
+            ("/", "exit") => Self::Done,
+            ("/", input) => Self::Group(input.to_owned()),
+            ("", input) => Self::Notice(input.to_owned()),
+            (_, _) => Self::Notice(s.to_owned()),
+
         }
+        // match s.to_lowercase().as_str() {
+        //     "/done" => Self::Done,
+        //     "/back" => Self::Done,
+        //     "/exit" => Self::Done,
+        //     _ => Self::Notice(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        //     _ => Self::Notice(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        // }
    }
 }
 ///
@@ -292,11 +304,6 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Notice > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
             log::debug!("states.callback | Notice > Input: {}", input);
-            if !state.group.is_empty() {
-
-            } else {
-
-            }
             let cmd = NoticeMenu::parse(&input, 0);
             log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
             match cmd {
@@ -325,6 +332,10 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     log::debug!("states.command | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
             }
+            // if !state.group.is_empty() {
+            // } else {
+
+            // }
         }
         State::Subscribe(_) => todo!(),
         State::GeneralMessage(_) => todo!(),

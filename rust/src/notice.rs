@@ -46,7 +46,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
             IndexMap::new()
         }
     };
-    log::debug!("notice.enter | groups: {:#?}", groups);
+    // log::debug!("notice.enter | groups: {:#?}", groups);
     // let state = state.to_owned();
     if !state.group.is_empty() && state.text.is_empty() {
         let text = format!("Type a text for group '{}'", state.group);
@@ -59,7 +59,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
         }
     } else {
         let text = format!("Select group to notice");
-        // dialogue.update(state.clone()).await?;
+        dialogue.update(state.clone()).await?;
         view(&bot, &msg, &state, &groups, text).await?;
     }
     Ok(())
