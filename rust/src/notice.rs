@@ -50,7 +50,8 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
 pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerResult {
     match msg.text() {
         Some(text) => {
-            log::debug!("notice.notice | Sending notice from '{}': '{:?}'", state.user_id, text);
+            let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
+            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
             let groups =  match db::subscriptions().await {
                 Ok(groups) => groups,
                 Err(err) => {
@@ -59,10 +60,10 @@ pub async fn notice(bot: Bot, msg: Message, state: NoticeMenuState) -> HandlerRe
                 }
             };
             if let Some(group) = groups.get(&state.group) {
-                log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
+                log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 // view(&bot, &msg, &state, &groups, text).await?;
                 for (_, user) in &group.members {
-                    log::warn!("notice.notice | \t member '{}' ({})", user.name, user.id);
+                    log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
                     bot.send_message(user.id, text)
                         // .edit_message_media(user_id, message_id, media)
                         .await
