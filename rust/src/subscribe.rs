@@ -32,7 +32,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: Subscrib
     };
     if !state.group.is_empty() {
         // let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
-        subscribe(&mut groups, &state.group, user_id, &user_name);
+        subscribe(&mut groups, &state.group, user_id, &user_name).await?;
     }
     let text = format!("Select group to subscribe / unsubscribe");
     dialogue.update(state.clone()).await?;

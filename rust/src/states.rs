@@ -72,12 +72,12 @@ enum MainMenu {
 impl MainMenu {
    fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
         match s.to_lowercase().as_str() {
-            "/notice" => Self::Notice,
-            "/links" => Self::Links(s.to_owned()),
-            "/subscribe" => Self::Subscribe,
-            "/done" => Self::Done,
-            "/back" => Self::Done,
-            "/exit" => Self::Done,
+            "/notice" | "/Notice" => Self::Notice,
+            "/links" | "/Links" => Self::Links(s.to_owned()),
+            "/subscribe" | "/Subscribe" => Self::Subscribe,
+            "/done" | "/Done" => Self::Done,
+            "/back" | "/Back" => Self::Done,
+            "/exit" | "/Exit" => Self::Done,
             _ => Self::Unknown,
         }
    }
@@ -94,9 +94,9 @@ enum LinksMenu {
 impl LinksMenu {
    fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
         match s.to_lowercase().as_str() {
-            "/done" => Self::Done,
-            "/back" => Self::Done,
-            "/exit" => Self::Done,
+            "/done" | "/Done" => Self::Done,
+            "/back" | "/Back" => Self::Done,
+            "/exit" | "/Exit" => Self::Done,
             _ => Self::Link(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
         }
    }
@@ -328,8 +328,12 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     let state = NoticeState { prev_state: state, user_id, ..Default::default() };
                     crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
+                MainMenu::Subscribe => {
+                    let state = SubscribeState { prev_state: state, user_id, ..Default::default() };
+                    crate::subscribe::enter(bot, q.message.unwrap(), dialogue, state).await?
+                }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
-                _ => {
+                MainMenu::Unknown => {
                     log::debug!("states.command | Main > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
             }
