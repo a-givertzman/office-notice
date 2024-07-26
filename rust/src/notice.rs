@@ -28,10 +28,9 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeMe
             IndexMap::new()
         }
     };
-    // log::debug!("notice.enter | groups: {:#?}", groups);
-    // let state = state.to_owned();
     if !state.group.is_empty() {
-        let text = format!("Type a text for group '{}'", state.group);
+        let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
+        let text = format!("Type a text for group '{}'", group_title);
         dialogue.update(state.clone()).await?;
         bot.edit_message_text(msg.chat.id, msg.id, text)
             // .edit_message_media(user_id, message_id, media)

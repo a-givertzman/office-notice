@@ -169,7 +169,7 @@ pub async fn new_chat_member(chat_member: &ChatMemberUpdated) -> HandlerResult {
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
     log::debug!("states.new_chat_member | MyChatMember(added): user {}, chat: {}", username, chat_name);
     // bot.send_message(chat_member.chat.id, format!("Welcome to {telegram_group_name} {username}!")).await?;
-    db::insert_subscription(&chat_id_string, chat_title).await;
+    db::insert_subscription(&chat_id_string, chat_title).await?;
     Ok(())
 }
 ///
@@ -180,7 +180,7 @@ pub async fn left_chat_member(chat_member: &ChatMemberUpdated) -> HandlerResult 
     let username = user.mention().unwrap_or_else(|| format!("{} ({})", user.full_name(), user.id));
     log::debug!("states.left_chat_member | MyChatMember(removed):user {}, chat: {}", username, chat_name);
     // bot.send_message(chat_member.chat.id, format!("Goodbye {username}!")).await?;
-    db::remove_subscription(chat_member.chat.id).await;
+    db::remove_subscription(chat_member.chat.id).await?;
     Ok(())
 }
 ///
