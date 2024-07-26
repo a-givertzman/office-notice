@@ -60,11 +60,8 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeM
             log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
-                match &group.id {
-                    Some(group_id) => {
-                        bot.send_message(group_id.to_owned(), text).await.map_err(|err| format!("inline::view {}", err))?;
-                    }
-                    None => todo!(),
+                if let Some(group_id) = &group.id {
+                    bot.send_message(group_id.to_owned(), text).await.map_err(|err| format!("inline::view {}", err))?;
                 }
                 for (_, user) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
