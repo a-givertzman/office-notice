@@ -88,7 +88,11 @@ pub async fn insert_subscription(chat_id: &str, chat_title: &str) -> Result<(), 
                 }
                 None => {
                     log::debug!("db.insert_subscription | Regictering chat {} ({})...", chat_title, chat_id);
-                    let subscription = Subscription { title: chat_title.to_owned(), members: IndexMap::new() };
+                    let subscription = Subscription {
+                        id: Some(chat_id.to_owned()),
+                        title: chat_title.to_owned(),
+                        members: IndexMap::new(),
+                    };
                     subscriptions.insert(chat_id.to_string(), subscription);
                     match update_subscriptions(&subscriptions).await {
                         Ok(_) => Ok(()),
