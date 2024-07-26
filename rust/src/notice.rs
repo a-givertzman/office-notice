@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue, StartState}, subscription::{Subscription, Subscriptions}};
 ///
 /// 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,12 +22,21 @@ pub struct Links {
 /// 
 #[derive(Debug, Clone)]
 pub struct NoticeState {
-    pub prev_state: MainState,
-    pub user_id: UserId,
+    pub prev_state: MainState,  // Where to go on Back btn
+    pub group: String,          // Group id to be noticed
+    pub text: String,           // Notice text to be sent
+    pub user_id: UserId,        // User id doing notice
+}
+//
+//
+impl Default for NoticeState {
+    fn default() -> Self {
+        Self { prev_state: MainState::default(), group: String::new(), text: String::new(), user_id: UserId(0) }
+    }
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: NoticeState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("notice.enter | state: {:#?}", state);
     let groups =  match db::subscriptions(user_id).await {
@@ -38,9 +47,26 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: Noti
         }
     };
     log::debug!("notice.enter | groups: {:#?}", groups);
-    let state = state.to_owned();
+    // let state = state.to_owned();
+    if !state.group.is_empty() {
+        if let Some(group) = groups.get(&state.group) {
+            notice(&bot, &msg, &state, &group).await?
+        }
+    }
     dialogue.update(state.clone()).await?;
     view(bot, msg, state, groups).await?;
+    Ok(())
+}
+///
+/// 
+pub async fn notice(bot: &Bot, msg: &Message, state: &NoticeState, group: &Subscription) -> HandlerResult {
+    log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
+    for (_, user) in &group.members {
+        bot.send_message(user.id, &state.text)
+            // .edit_message_media(user_id, message_id, media)
+            .await
+            .map_err(|err| format!("inline::view {}", err))?;
+    }
     Ok(())
 }
 ///

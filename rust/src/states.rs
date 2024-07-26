@@ -36,12 +36,26 @@ impl Default for State {
 pub struct StartState {
    pub restarted: bool,
 }
+//
+//
+impl Default for StartState {
+    fn default() -> Self {
+        Self { restarted: false }
+    }
+}
 ///
 /// 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct MainState {
    pub prev_state: StartState,
    pub user_id: UserId,
+}
+//
+//
+impl Default for MainState {
+    fn default() -> Self {
+        Self { prev_state: StartState::default(), user_id: UserId(0) }
+    }
 }
 ///
 /// Main menu
@@ -91,7 +105,8 @@ impl LinksMenu {
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]
 enum NoticeMenu {
-   Notice(String),    // Notice menu
+   Group(String),   // Selected group to be noticed
+   Notice(String),  // Notice text to be sent
    Done,            // Exit menu
 }
 //
@@ -183,7 +198,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
                 MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id}).await?,
-                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id }).await?,
+                MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
                 MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, new_state).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
                 MainMenu::Unknown => {
@@ -241,7 +256,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Notice => {
-                    let state = NoticeState { prev_state: state, user_id };
+                    let state = NoticeState { prev_state: state, user_id, ..Default::default() };
                     crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?,
@@ -277,12 +292,30 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Notice > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
             log::debug!("states.callback | Notice > Input: {}", input);
+            if !state.group.is_empty() {
+
+            } else {
+
+            }
             let cmd = NoticeMenu::parse(&input, 0);
             log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
             match cmd {
-                NoticeMenu::Notice(_) => {
+                NoticeMenu::Group(group) => {
+                    log::debug!("states.callback | Notice > Notice Will send to the: '{}' group", group);
                     let state = NoticeState {
                         prev_state: state.prev_state,
+                        group,
+                        user_id: state.user_id,
+                        ..Default::default()
+                    };
+                    crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
+                }
+                NoticeMenu::Notice(text) => {
+                    log::debug!("states.callback | Notice > Notice text to be sent: '{}'", text);
+                    let state = NoticeState {
+                        prev_state: state.prev_state,
+                        group: state.group,
+                        text,
                         user_id: state.user_id,
                     };
                     crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
@@ -339,7 +372,6 @@ pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
             .collect()
         })
         .collect();
-
     let markup = KeyboardMarkup::new(kb)
         .resize_keyboard(true);
     ReplyMarkup::Keyboard(markup)

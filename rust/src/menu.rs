@@ -6,16 +6,13 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{
     prelude::*,
-    types::{InputFile, InlineKeyboardButton, InlineKeyboardMarkup,
-       CallbackQuery, InputMedia, ParseMode, InputMediaPhoto,
+    types::{InlineKeyboardButton, InlineKeyboardMarkup,
+       CallbackQuery, ParseMode,
     },
 };
-use crate::callback::Command;
 use arraylib::iter::IteratorExt;
-use crate::environment as env;
 use crate::states::*;
 use crate::db as db;
-use crate::subscription::*;
 use crate::loc::*;
 ///
 /// 
