@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
-use crate::{db, environment as env, links::LinksState, menu, notice::NoticeState, subscribe::SubscribeState};
+use crate::{db, environment as env, links::LinksState, menu, notice::{self, NoticeState}, subscribe::SubscribeState};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -143,7 +143,7 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
         .branch(dptree::case![State::Start(state)].endpoint(start))
         .branch(dptree::case![State::Main(state)].endpoint(start))
         .branch(dptree::case![State::Links(state)].endpoint(command))
-        .branch(dptree::case![State::Notice(state)].endpoint(command))
+        .branch(dptree::case![State::Notice(state)].endpoint(notice::notice))
         .branch(dptree::case![State::Subscribe(state)].endpoint(command))
         .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
     )

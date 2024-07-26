@@ -50,13 +50,18 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
     // let state = state.to_owned();
     if !state.group.is_empty() && state.text.is_empty() {
         let text = format!("Type a text for group '{}'", state.group);
-        view(&bot, &msg, &state, &groups, text).await?;
+        dialogue.update(state.clone()).await?;
+        bot.send_message(msg.chat.id, text)
+            // .edit_message_media(user_id, message_id, media)
+            .await
+            .map_err(|err| format!("inline::view {}", err))?;
+        // view(&bot, &msg, &state, &groups, text).await?;
     } else if !state.group.is_empty() && !state.text.is_empty() {
-        if let Some(group) = groups.get(&state.group) {
-            let text = format!("Sending to group '{}'", state.group);
-            view(&bot, &msg, &state, &groups, text).await?;
-            notice(&bot, &msg, &state, &group).await?
-        }
+        // if let Some(group) = groups.get(&state.group) {
+        //     let text = format!("Sending to group '{}'", state.group);
+        //     view(&bot, &msg, &state, &groups, text).await?;
+        //     // notice(&bot, &msg, &state).await?
+        // }
     } else {
         let text = format!("Select group to notice");
         dialogue.update(state.clone()).await?;
@@ -66,13 +71,26 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
 }
 ///
 /// 
-pub async fn notice(bot: &Bot, msg: &Message, state: &NoticeState, group: &Subscription) -> HandlerResult {
-    log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
-    for (_, user) in &group.members {
-        bot.send_message(user.id, &state.text)
-            // .edit_message_media(user_id, message_id, media)
-            .await
-            .map_err(|err| format!("inline::view {}", err))?;
+pub async fn notice(bot: Bot, msg: Message, state: NoticeState) -> HandlerResult {
+    log::debug!("notice.notice | Sending notice from '{}': '{:?}'", state.user_id, msg.text());
+    let groups =  match db::subscriptions(state.user_id).await {
+        Ok(groups) => groups,
+        Err(err) => {
+            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
+            IndexMap::new()
+        }
+    };
+    if let Some(group) = groups.get(&state.group) {
+        log::warn!("notice.notice | Sending notice to the '{}' group...", group.title);
+        // view(&bot, &msg, &state, &groups, text).await?;
+        for (_, user) in &group.members {
+            bot.send_message(user.id, &state.text)
+                // .edit_message_media(user_id, message_id, media)
+                .await
+                .map_err(|err| format!("inline::view {}", err))?;
+        }
+    } else {
+        log::warn!("notice.notice | Group '{}' not found in the gdoups: {:#?}", state.group, groups);
     }
     Ok(())
 }
