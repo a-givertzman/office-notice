@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
 use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// 
@@ -19,7 +19,6 @@ impl Default for NoticeState {
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
-    let user_id = state.user_id;
     log::debug!("notice.enter | state: {:#?}", state);
     let groups =  match db::subscriptions().await {
         Ok(groups) => groups,
@@ -89,8 +88,8 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
 ///
 /// 
 pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
-    let user_id = state.user_id;
-    let markup = markup(&groups, user_id).await?;
+    let _user_id = state.user_id;
+    let markup = markup(&groups).await?;
     bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
         .reply_markup(markup)
@@ -100,7 +99,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscr
 }
 ///
 /// 
-async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(groups: &Subscriptions) -> Result<InlineKeyboardMarkup, String> {
     let mut buttons: Vec<InlineKeyboardButton> = groups
         .iter()
         .map(|(group_id, group)| {

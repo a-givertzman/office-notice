@@ -6,9 +6,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup,
-       CallbackQuery, ParseMode,
-    },
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
 use arraylib::iter::IteratorExt;
 use crate::states::*;
@@ -27,7 +25,7 @@ pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
     let user_id = state.user_id; // user needs to sync with cart
     let chat_id = msg.chat.id;
     let menu =  db::menu(user_id).await?;
-    let markup = markup(&menu, user_id).await?;
+    let markup = markup(&menu).await?;
     let text = "Main menu";
     bot.send_message(chat_id, text)
         // .caption(text)
@@ -37,45 +35,45 @@ pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
         .await?;
     Ok(())
 }
-///
-///
-async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
-    bot.send_message(user_id, text)
-    .await
-    .map_err(|err| format!("inline::msg {}", err))?;
-    Ok(())
-}
+// ///
+// ///
+// async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
+//     bot.send_message(user_id, text)
+//     .await
+//     .map_err(|err| format!("inline::msg {}", err))?;
+//     Ok(())
+// }
+// ///
+// /// 
+// pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
+//     let user_id = q.from.id;
+//     log::debug!("menu.view | user_id: {}", user_id);
+//     // Load from storage
+//     let menu =  db::menu(user_id).await?;
+//     // // Collect info
+//     let markup = markup(&menu, user_id).await?;
+//     let text = format!("Navigation view");
+//     // Message to modify
+//     let message = q.message;
+//     if message.is_none() {
+//        // "Error, update message is invalid, please start again"
+//        let text = loc("Error, update message is invalid, please start again");
+//        msg(bot, user_id, &text).await?;
+//        return Ok(())
+//     }
+//     // let chat_id = ChatId::Id(message.chat_id());
+//     let message_id = message.unwrap().id;
+//     msg(bot, user_id, &text).await?;
+//     bot.edit_message_text(user_id, message_id, text)
+//         // .edit_message_media(user_id, message_id, media)
+//         .reply_markup(markup)
+//     .await
+//     .map_err(|err| format!("inline::view {}", err))?;
+//     Ok(())
+// }
 ///
 /// 
-pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
-    let user_id = q.from.id;
-    log::debug!("menu.view | user_id: {}", user_id);
-    // Load from storage
-    let menu =  db::menu(user_id).await?;
-    // // Collect info
-    let markup = markup(&menu, user_id).await?;
-    let text = format!("Navigation view");
-    // Message to modify
-    let message = q.message;
-    if message.is_none() {
-       // "Error, update message is invalid, please start again"
-       let text = loc("Error, update message is invalid, please start again");
-       msg(bot, user_id, &text).await?;
-       return Ok(())
-    }
-    // let chat_id = ChatId::Id(message.chat_id());
-    let message_id = message.unwrap().id;
-    msg(bot, user_id, &text).await?;
-    bot.edit_message_text(user_id, message_id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-    .await
-    .map_err(|err| format!("inline::view {}", err))?;
-    Ok(())
-}
-///
-/// 
-async fn markup(menu: &IndexMap<String, MenuItem>, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group
     let buttons: Vec<InlineKeyboardButton> = menu
     .iter()

@@ -23,7 +23,7 @@ pub struct Links {
 #[derive(Debug, Clone)]
 pub struct LinksState {
     pub prev_state: MainState,
-    pub prev_level: Option<String>,
+    // pub prev_level: Option<String>,
     pub level: String,
     pub child: IndexMap<String, Links>,
     pub user_id: UserId,

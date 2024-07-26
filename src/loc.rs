@@ -3,7 +3,6 @@ use std::collections::HashMap;
 ///
 /// 
 pub type LocaleTag = u32;
-pub type Args<'a> = &'a[&'a(dyn std::fmt::Display + Sync)];
 ///
 /// 
 pub fn loc(key: impl Into<String>) -> String {
@@ -12,13 +11,6 @@ pub fn loc(key: impl Into<String>) -> String {
         Some(ru) => ru.to_string(),
         None => key,
     }
-}
-///
-/// Returns locale tag by the language of the user
-pub fn loc_tag(locale: Option<&str>) -> LocaleTag {
-    log::debug!("User locale: {:?}", locale);
-    _ = locale;
-    0u32
 }
 //
 //

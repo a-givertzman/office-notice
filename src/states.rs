@@ -261,7 +261,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
         _ => {
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
-                MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, prev_level: None, level, child: IndexMap::new(), user_id}).await?,
+                MainMenu::Links(level) => crate::links::enter(bot, msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
                 MainMenu::Notice => crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
                 MainMenu::Subscribe => crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
                 MainMenu::Done => crate::states::reload(bot, msg, dialogue, state).await?,
@@ -321,7 +321,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
                 MainMenu::Links(level) => {
-                    let state = LinksState {prev_state: state, prev_level: None, level, child: IndexMap::new(), user_id };
+                    let state = LinksState {prev_state: state, level, child: IndexMap::new(), user_id };
                     crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
                 }
                 MainMenu::Notice => {
@@ -348,7 +348,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 LinksMenu::Link(level) => {
                     let state = LinksState {
                         prev_state: state.prev_state,
-                        prev_level: Some(state.level),
+                        // prev_level: Some(state.level),
                         level,
                         child: state.child,
                         user_id: state.user_id,
@@ -356,9 +356,6 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::links::enter(bot.clone(), q.clone().message.unwrap(), dialogue, state).await?
                 }
                 LinksMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
-                _ => {
-                    log::debug!("states.command | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
-                }
             }
         },
         State::NoticeMenu(state) => {
@@ -382,9 +379,6 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::notice::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
                 NoticeMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
-                _ => {
-                    log::debug!("states.command | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
-                }
             }
         }
         State::Subscribe(state) => {
@@ -409,9 +403,6 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::subscribe::enter(bot, q.message.unwrap(), dialogue, state).await?
                 }
                 SubscribeMenu::Done => crate::states::reload(bot.clone(), q.clone().message.unwrap(), dialogue, state.prev_state).await?,
-                _ => {
-                    log::debug!("states.callback | Links > user: {} ({}), Unknown command {}", user_name, user_id, input);
-                }
             }            
         }
         State::GeneralMessage(state) => {
@@ -446,11 +437,11 @@ async fn update_last_seen_full(user: &User) -> Result<(), String> {
     db::user_insert(user_id, name, Some(contact), None).await?;
     Ok(())
 }
-///
-/// Frequently used menu
-pub fn cancel_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-    kb_markup(vec![vec![loc("/")]])
-}
+// ///
+// /// Frequently used menu
+// pub fn cancel_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
+//     kb_markup(vec![vec![loc("/")]])
+// }
 ///
 /// Construct keyboard from strings
 pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
