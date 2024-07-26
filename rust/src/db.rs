@@ -127,6 +127,7 @@ pub async fn update_subscriptions(subscriptions: &Subscriptions) -> Result<(), S
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&path) {
         Ok(f) => {
             match serde_json::to_writer_pretty(f, &subscriptions) {
