@@ -21,36 +21,36 @@ pub async fn menu(user_id: UserId) -> Result<IndexMap<String, MenuItem>, String>
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
     let path = "./users.json";
-    let new_user = User {
-        id: ChatId(user_id as i64),
-        name: name.clone(),
-        contact: contact.clone(),
-        address: address.clone(),
-        subscriptions: vec![],
-    };
+    // let new_user = ;
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(&path) {
         Ok(f) => {
-            let mut users = match serde_json::from_reader(f.try_clone().unwrap()) {
+            let mut users = match serde_json::from_reader(&f) {
                 Ok(value) => {
-                    let users: IndexMap<u64, User> = value;
+                    let users: IndexMap<String, User> = value;
                     users
                 }
                 Err(_) => {
-                    IndexMap::<u64, User>::new()
+                    IndexMap::<String, User>::new()
                 }
             };
             let name = &name;
-            users.entry(user_id)
+            users.entry(user_id.to_string())
                 .and_modify(|user| {
                     user.name = name.to_owned();
-                    user.contact = contact;
-                    user.address = address;
+                    user.contact = contact.clone();
+                    user.address = address.clone();
                 })
-                .or_insert(new_user);
+                .or_insert(User {
+                    id: ChatId(user_id as i64),
+                    name: name.clone(),
+                    contact: contact,
+                    address: address,
+                    subscriptions: vec![],
+                });
             match serde_json::to_writer_pretty(f, &users) {
                 Ok(_) => Ok(()),
                 Err(err) => Err(format!("db.user_insert | User '{}' ({}) - Error {:#?}", name, user_id, err)),
