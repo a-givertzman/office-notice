@@ -207,11 +207,12 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
 /// 
 pub async fn reload(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state).await?;
-    let text =  loc("You are in the main menu");
-    let chat_id = msg.chat.id;
-    bot.send_message(chat_id, text)
-        .reply_markup(main_menu_markup(0))
-        .await?;
+    // let text =  loc("You are in the main menu");
+    // let chat_id = msg.chat.id;
+    menu::enter(bot, msg, state).await?;
+    // bot.send_message(chat_id, text)
+    //     .reply_markup(main_menu_markup(0))
+    //     .await?;
     Ok(())
 }
 ///
@@ -248,8 +249,8 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
                     if state.prev_state.restarted {
                         let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
                         bot.send_message(chat_id, text)
-                        .reply_markup(main_menu_markup(0))
-                        .await?;
+                            .reply_markup(main_menu_markup(0))
+                            .await?;
                     } else {
                         // Process general commands without search if restarted (to prevent search submode commands)
                         crate::general::update(bot, msg, dialogue, new_state).await?;

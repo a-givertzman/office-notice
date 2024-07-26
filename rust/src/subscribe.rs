@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use arraylib::iter::IteratorExt;
 use indexmap::IndexMap;
-use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, ParseMode, ReplyMarkup, User, UserId}
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, UserId}
 };
 use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscription};
 ///

@@ -55,14 +55,11 @@ impl Command {
 /// 
 async fn enter_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState, receiver: ChatId) -> HandlerResult {
     let chat_id = msg.chat.id;
- 
     // "Enter a message to send (/ to cancel)"
     let text = loc("Enter a message to send (/ to cancel)");
- 
     bot.send_message(chat_id, text)
-    .reply_markup(cancel_markup(0))
-    .await?;
- 
+        .reply_markup(cancel_markup(0))
+        .await?;
     let new_state = MessageState {
        prev_state: state,
        receiver,
@@ -96,9 +93,9 @@ pub async fn update(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSta
         Command::Unknown => {
             let text = loc("Text message please");
             bot.send_message(chat_id, text)
-            .reply_markup(main_menu_markup(0))
-            .parse_mode(ParseMode::Html)
-            .await?;
+                .reply_markup(main_menu_markup(0))
+                .parse_mode(ParseMode::Html)
+                .await?;
         },
     }
     Ok(())

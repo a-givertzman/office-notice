@@ -32,9 +32,29 @@ where
                 log::info!("main::Unable to send message to the service chat");
             };
         };
-
         Box::pin(fut)
    }
+}
+///
+/// 
+async fn default_handler(upd: Arc<Update>) {
+    match &upd.kind {
+        UpdateKind::MyChatMember(chat_member) => {
+            if chat_member.new_chat_member.is_member() {    //m.old_chat_member.is_left() && 
+                if let Err(err) = crate::states::new_chat_member(chat_member).await {
+                    log::warn!("main | Error in states.new_chat_member: {:?}", err);
+                };
+            } else if chat_member.new_chat_member.is_left() { // m.old_chat_member.is_member() && 
+                if let Err(err) = crate::states::left_chat_member(chat_member).await {
+                    log::warn!("main | Error in states.left_chat_member: {:?}", err);
+                };
+            }
+        }
+        _ => {
+            log::warn!("main | Unhandled update: {:?}", upd);
+            // environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
+        }
+    }
 }
 ///
 ///
@@ -58,21 +78,8 @@ async fn main() {
     }    
     Dispatcher::builder(bot.clone(), states::schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
-        .default_handler(|upd| async move {
-            match &upd.kind {
-                UpdateKind::MyChatMember(chat_member) => {
-                    if chat_member.new_chat_member.is_member() {    //m.old_chat_member.is_left() && 
-                        crate::states::new_chat_member(chat_member).await;
-                    } else if chat_member.new_chat_member.is_left() { // m.old_chat_member.is_member() && 
-                        crate::states::left_chat_member(chat_member).await;
-                    }
-                }
-                _ => {
-                    log::warn!("main | Unhandled update: {:?}", upd);
-                    // environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
-                }
-            }
-        })
+        // All unhandled updates redirects to the default_handler
+        .default_handler(default_handler)
         // If the dispatcher fails for some reason, execute this handler.
         .error_handler(Arc::new(MyErrorHandler{}))
         .enable_ctrlc_handler()

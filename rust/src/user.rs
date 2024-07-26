@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use crate::subscription::Subscription;
 ///
-/// 
+/// User, representing telegram user, subscribed on the notices
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
    #[serde(alias = "user_id", alias = "chat_id")]
@@ -15,7 +15,7 @@ pub struct User {
    pub subscriptions: Vec<Subscription>,
 }
 ///
-/// 
+/// Parse chat_id from / to string
 mod chat_id {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use teloxide::types::ChatId;
