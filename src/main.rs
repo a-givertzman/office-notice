@@ -9,6 +9,7 @@ mod subscription;
 mod db;
 mod user;
 mod states;
+mod help;
 //
 use std::{env, fmt::Debug, process::Command, sync::Arc};
 use futures::future::BoxFuture;

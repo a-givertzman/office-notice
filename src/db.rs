@@ -20,7 +20,7 @@ pub async fn menu(user_id: UserId) -> Result<IndexMap<String, MenuItem>, String>
 ///
 /// 
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
-    let path = "./users.json";
+    let path = "./assets/users.json";
     let mut users = match users(path).await {
         Ok(users) => users,
         Err(err) => {
@@ -65,7 +65,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
 /// Returns user from storage
 #[allow(unused)]
 pub async fn user(user_id: u64) -> Result<User, String> {
-    let path = "./users.json";
+    let path = "./assets/users.json";
     log::info!("db.user | config: {:?}", path);
     match load(path) {
         Ok(users) => {
@@ -139,7 +139,7 @@ pub async fn remove_subscription(chat_id: ChatId) -> Result<(), String> {
 ///
 /// 
 pub async fn update_subscriptions(subscriptions: &Subscriptions) -> Result<(), String> {
-    let path = "./subscription.json";
+    let path = "./assets/subscription.json";
     match fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -157,7 +157,7 @@ pub async fn update_subscriptions(subscriptions: &Subscriptions) -> Result<(), S
 ///
 /// Returns subscriptions from storage
 pub async fn subscriptions() -> Result<Subscriptions, String> {
-    let path = "./subscription.json";
+    let path = "./assets/subscription.json";
     log::info!("db.subscriptions | load subscriptions from: {:?}", path);
     match load(path) {
         Ok(groups) => {
@@ -171,7 +171,7 @@ pub async fn subscriptions() -> Result<Subscriptions, String> {
 /// Returns Links
 pub async fn links(user_id: UserId) -> Result<Links, String> {
     let _ = user_id;
-    let path = "./links.json";
+    let path = "./assets/links.json";
     log::info!("db.links | load links from: {:?}", path);
     match load(path) {
         Ok(links) => {

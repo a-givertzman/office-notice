@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
-use crate::{db, links::LinksState, menu, notice::{self, NoticeState}, subscribe::SubscribeState};
+use crate::{db, help, links::LinksState, menu, notice::{self, NoticeState}, subscribe::SubscribeState};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -153,7 +153,7 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             // Private message handler
             dptree::filter(|msg: Message| { msg.chat.is_private() })
             .branch(dptree::case![State::Start(state)].endpoint(start))
-            .branch(dptree::case![State::Main(state)].endpoint(start))
+            .branch(dptree::case![State::Main(state)].endpoint(command))
             .branch(dptree::case![State::Links(state)].endpoint(command))
             .branch(dptree::case![State::NoticeMenu(state)].endpoint(notice::notice))
             .branch(dptree::case![State::Subscribe(state)].endpoint(command))
@@ -257,7 +257,8 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
     let cmd_raw = msg.text().unwrap_or_default();
     log::debug!("states.command | user: {} ({}), input {} ", user_name, user_id, cmd_raw);
     match cmd_raw {
-        "/start" => menu::enter(bot, msg, state).await?,
+        "/start" | "/Start" => menu::enter(bot, msg, state).await?,
+        "/help" | "/Help" => help::enter(bot, msg, dialogue, state).await?,
         _ => {
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
