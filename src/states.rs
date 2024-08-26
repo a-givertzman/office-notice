@@ -433,7 +433,7 @@ async fn update_last_seen_full(user: &User) -> Result<(), String> {
         format!("{} {}", user.first_name, last_name)
     } else {user.first_name.clone()};
     let contact = if let Some(username) = &user.username {
-        format!("@{}", username)
+        format!("{}", username)
     } else {String::from("-")};
     db::user_insert(user_id, name, Some(contact), None).await?;
     Ok(())
