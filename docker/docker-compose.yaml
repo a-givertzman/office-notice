@@ -1,8 +1,9 @@
 services:
   office-notice-telegram-bot:
     build:
-      context: .
+      context: ../
+      dockerfile: ./docker/Dockerfile
     restart: unless-stopped
     volumes:
-      - ./config.yaml:/bot/config.yaml
-      - ./assets:/bot/assets
+      - ../config.yaml:/bot/config.yaml
+      - ../assets:/bot/assets
