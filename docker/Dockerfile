@@ -7,7 +7,7 @@ RUN apk add --update --no-cache \
 WORKDIR /build
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
-RUN cargo build --release
+RUN RUSTFLAGS='-C target-feature=-crt-static' cargo build --release
 
 FROM alpine:3.20 AS runner
 RUN apk upgrade --no-cache
