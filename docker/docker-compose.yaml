@@ -1,0 +1,8 @@
+services:
+  office-notice-telegram-bot:
+    build:
+      context: .
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/bot/config.yaml
+      - ./assets:/bot/assets
