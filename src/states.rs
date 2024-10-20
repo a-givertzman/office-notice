@@ -1,14 +1,14 @@
 use derive_more::From;
 use indexmap::IndexMap;
 use teloxide::{prelude::*,
-   types::{ReplyMarkup, KeyboardButton, KeyboardMarkup, User, UserId,},
+   types::{User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
 use crate::{db, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
-use crate::general::MessageState;
+// use crate::general::MessageState;
 use crate::loc::*;
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -21,7 +21,7 @@ pub enum State {
    Links(LinksState),   // in Links menu
    NoticeMenu(NoticeState),         // in Notice menu
    Subscribe(SubscribeState),    // in Subscribe menu
-   GeneralMessage(MessageState), // general commands, enter text of message to send
+//    GeneralMessage(MessageState), // general commands, enter text of message to send
 }
 //
 //
@@ -69,7 +69,7 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             .branch(dptree::case![State::Links(state)].endpoint(command))
             .branch(dptree::case![State::NoticeMenu(state)].endpoint(notice::notice))
             .branch(dptree::case![State::Subscribe(state)].endpoint(command))
-            .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
+            // .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
         )
         .branch(dptree::entry().endpoint(chat_message_handler));
     let callback_query_handler = Update::filter_callback_query()
@@ -186,11 +186,11 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
         _ => {
             let cmd = MainMenu::parse(cmd_raw, 0);
             match cmd {
-                MainMenu::Links(level) => crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
-                MainMenu::Notice => crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
-                MainMenu::Subscribe => crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
-                MainMenu::Help => crate::help::enter(&bot, &msg, dialogue, state).await?,
-                MainMenu::Done => crate::states::reload(bot, &msg, dialogue, state).await?,
+                MainMenu::Links(level) =>   crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
+                MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
+                MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
+                MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, state).await?,
+                MainMenu::Done =>                   crate::states::reload(bot, &msg, dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
                     // Report about a possible restart and loss of context
@@ -337,23 +337,23 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 SubscribeMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }            
         }
-        State::GeneralMessage(state) => {
-            log::debug!("states.callback | GeneralMessage > receiver: {}", state.receiver);
-        },
+        // State::GeneralMessage(state) => {
+        //     log::debug!("states.callback | GeneralMessage > receiver: {}", state.receiver);
+        // },
     }
     Ok(())
 }
-///
-/// 
-pub fn main_menu_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-    let commands = vec![
-        loc("🛒"),
-        loc("Все"),
-        loc("Открыто"),
-        loc("⚙"),
-    ];
-    kb_markup(vec![commands])
-}
+// ///
+// /// 
+// pub fn main_menu_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
+//     let commands = vec![
+//         loc("🛒"),
+//         loc("Все"),
+//         loc("Открыто"),
+//         loc("⚙"),
+//     ];
+//     kb_markup(vec![commands])
+// }
 ///
 ///
 async fn update_last_seen_full(user: &User) -> Result<(), String> {
@@ -374,17 +374,17 @@ async fn update_last_seen_full(user: &User) -> Result<(), String> {
 // pub fn cancel_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
 //     kb_markup(vec![vec![loc("/")]])
 // }
-///
-/// Construct keyboard from strings
-pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
-    let kb: Vec<Vec<KeyboardButton>> = keyboard.iter()
-        .map(|row| {
-            row.iter()
-            .map(|label| KeyboardButton::new(label))
-            .collect()
-        })
-        .collect();
-    let markup = KeyboardMarkup::new(kb)
-        .resize_keyboard();
-    ReplyMarkup::Keyboard(markup)
-}
+// ///
+// /// Construct keyboard from strings
+// pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
+//     let kb: Vec<Vec<KeyboardButton>> = keyboard.iter()
+//         .map(|row| {
+//             row.iter()
+//             .map(|label| KeyboardButton::new(label))
+//             .collect()
+//         })
+//         .collect();
+//     let markup = KeyboardMarkup::new(kb)
+//         .resize_keyboard();
+//     ReplyMarkup::Keyboard(markup)
+// }

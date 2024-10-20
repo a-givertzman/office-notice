@@ -53,15 +53,11 @@ pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, state: NoticeS
         let group_title = groups.get(&state.group).map_or(state.group.clone(), |group| group.title.clone());
         let text = format!("Type a text for group '{}'", group_title);
         dialogue.update(state.clone()).await?;
-        bot.edit_message_text(msg.chat.id, msg.id, text)
-            // .edit_message_media(user_id, message_id, media)
-            .await
-            .map_err(|err| format!("inline::view {}", err))?;
-        // view(&bot, &msg, &state, &groups, text).await?;
+        view(&bot, &msg, &state, &groups, text, Some(())).await?;
     } else {
         let text = format!("Select group to notice");
         dialogue.update(state.clone()).await?;
-        view(&bot, &msg, &state, &groups, text).await?;
+        view(&bot, &msg, &state, &groups, text, None).await?;
     }
     Ok(())
 }
@@ -108,10 +104,10 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
     Ok(())
 }
 ///
-/// 
-pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
+/// Menu buttons to select a notice group
+pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
     let _user_id = state.user_id;
-    let markup = markup(&groups).await?;
+    let markup = markup(&groups, is_message).await?;
     bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
         .reply_markup(markup)
@@ -121,15 +117,18 @@ pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscr
 }
 ///
 /// 
-async fn markup(groups: &Subscriptions) -> Result<InlineKeyboardMarkup, String> {
-    let mut buttons: Vec<InlineKeyboardButton> = groups
-        .iter()
-        .map(|(group_id, group)| {
-            InlineKeyboardButton::callback(
-                group.title.clone(),
-                format!("/{}", group_id),
-        )})
-        .collect();
+async fn markup(groups: &Subscriptions, is_message: Option<()>) -> Result<InlineKeyboardMarkup, String> {
+    let mut buttons: Vec<InlineKeyboardButton> = match is_message {
+        Some(_) => vec![],
+        None => groups
+            .iter()
+            .map(|(group_id, group)| {
+                InlineKeyboardButton::callback(
+                    group.title.clone(),
+                    format!("/{}", group_id),
+            )})
+            .collect(),
+    };
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
         format!("/back")
