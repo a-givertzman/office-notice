@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 use derive_more::From;
 use indexmap::IndexMap;
 use teloxide::{prelude::*,
    types::{User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
+use tokio::time::sleep;
 use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
 // use crate::database as db;
 // use crate::gear::*;
@@ -222,10 +225,17 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
                 // Process general commands without search if restarted (to prevent search submode commands)
                 let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
                 bot.send_message(chat_id, text)
-                    // .reply_markup(main_menu_markup(0))
-                    .await?;
+                // .reply_markup(main_menu_markup(0))
+                .await?;
                 // crate::states::reload(bot, msg, dialogue, state).await?;
             }
+            sleep(Duration::from_secs(2)).await;
+            dialogue.update(state.prev_state).await?;
+            crate::states::reload(bot.clone(), &msg, dialogue, state).await?
+            // match crate::states::reload(bot.clone(), &msg, dialogue.clone(), state.prev_state).await {
+            //     Ok(_) => todo!(),
+            //     Err(_) => crate::states::exit(bot, &msg, dialogue, state).await?,
+            // }
         }
     };
     Ok(())
