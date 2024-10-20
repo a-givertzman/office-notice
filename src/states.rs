@@ -4,7 +4,7 @@ use teloxide::{prelude::*,
    types::{User, UserId,},
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
-use crate::{db, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -21,6 +21,7 @@ pub enum State {
    Links(LinksState),   // in Links menu
    NoticeMenu(NoticeState),         // in Notice menu
    Subscribe(SubscribeState),    // in Subscribe menu
+   Help(HelpState),
 //    GeneralMessage(MessageState), // general commands, enter text of message to send
 }
 //
@@ -189,7 +190,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
                 MainMenu::Links(level) =>   crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
                 MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
                 MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
-                MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, state).await?,
+                MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, HelpState { prev_state: new_state }).await?,
                 MainMenu::Done =>                   crate::states::reload(bot, &msg, dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
@@ -263,7 +264,10 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     let state = SubscribeState { prev_state: state, user_id, ..Default::default() };
                     crate::subscribe::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
                 }
-                MainMenu::Help => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?,
+                MainMenu::Help => {
+                    let state = HelpState { prev_state: state };
+                    crate::help::enter(&bot, q.regular_message().unwrap(), dialogue, state).await?
+                }
                 MainMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | Main > user: {} ({}), Unknown command {}", user_name, user_id, input);
@@ -289,7 +293,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
                 LinksMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }
-        },
+        }
         State::NoticeMenu(state) => {
             log::debug!("states.callback | Notice > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
@@ -336,6 +340,27 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
                 SubscribeMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }            
+        }
+        State::Help(state) => {
+            log::debug!("states.callback | Help > state: {:#?}", state);
+            // let input = q.data.to_owned().unwrap_or_default();
+            // log::debug!("states.callback | Links > Input: {}", input);
+            // let cmd = LinksMenu::parse(&input, 0);
+            // log::debug!("states.callback | Links > Cmd: {:?}", cmd);
+            // match cmd {
+            //     LinksMenu::Link(level) => {
+            //         let state = LinksState {
+            //             prev_state: state.prev_state,
+            //             // prev_level: Some(state.level),
+            //             level,
+            //             child: state.child,
+            //             user_id: state.user_id,
+            //         };
+            //         crate::links::enter(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?
+            //     }
+            //     LinksMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
+            // }
+            crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?
         }
         // State::GeneralMessage(state) => {
         //     log::debug!("states.callback | GeneralMessage > receiver: {}", state.receiver);

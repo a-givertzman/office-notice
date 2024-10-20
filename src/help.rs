@@ -1,10 +1,18 @@
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode}
  };
 use crate::{loc::loc, states::{HandlerResult, MainState, MyDialogue}};
- ///
- /// 
- pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
-    dialogue.update(state).await?;
+///
+/// 
+#[derive(Debug, Clone)]
+pub struct HelpState {
+    pub prev_state: MainState,  // Where to go on Back btn
+    // pub user_id: UserId,        // User id doing notice
+}
+
+///
+/// 
+pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: HelpState) -> HandlerResult {
+    dialogue.update(state.clone()).await?;
     view(bot, msg, HELP_TEXT_RU).await
     // bot.send_message(chat_id, HELP_TEXT_RU)
     //     // .caption(text)
