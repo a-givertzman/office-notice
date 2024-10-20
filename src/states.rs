@@ -278,7 +278,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     let state = HelpState { prev_state: state };
                     crate::help::enter(&bot, q.regular_message().unwrap(), dialogue, state).await?
                 }
-                MainMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?,
+                MainMenu::Done => crate::states::exit(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | Main > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
@@ -353,23 +353,6 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         }
         State::Help(state) => {
             log::debug!("states.callback | Help > state: {:#?}", state);
-            // let input = q.data.to_owned().unwrap_or_default();
-            // log::debug!("states.callback | Links > Input: {}", input);
-            // let cmd = LinksMenu::parse(&input, 0);
-            // log::debug!("states.callback | Links > Cmd: {:?}", cmd);
-            // match cmd {
-            //     LinksMenu::Link(level) => {
-            //         let state = LinksState {
-            //             prev_state: state.prev_state,
-            //             // prev_level: Some(state.level),
-            //             level,
-            //             child: state.child,
-            //             user_id: state.user_id,
-            //         };
-            //         crate::links::enter(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?
-            //     }
-            //     LinksMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
-            // }
             crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?
         }
         // State::GeneralMessage(state) => {
