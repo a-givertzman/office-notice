@@ -1,7 +1,26 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}};
+///
+/// Links menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum LinksMenu {
+   Link(String),    // Links menu
+   Done,            // Exit menu
+}
+//
+//
+impl LinksMenu {
+   pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        match s.to_lowercase().as_str() {
+            "/done" | "/Done" => Self::Done,
+            "/back" | "/Back" => Self::Done,
+            "/exit" | "/Exit" => Self::Done,
+            _ => Self::Link(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        }
+   }
+}
 ///
 /// 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +49,7 @@ pub struct LinksState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("links.enter | state: {:#?}", state);
     let links =  match state.child.get(&state.level) {
@@ -46,7 +65,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: Link
 }
 ///
 /// 
-pub async fn view(bot: Bot, msg: Message, state: LinksState, links: Links) -> HandlerResult {
+pub async fn view(bot: Bot, msg: &Message, state: LinksState, links: Links) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));

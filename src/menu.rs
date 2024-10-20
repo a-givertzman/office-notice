@@ -13,6 +13,33 @@ use crate::states::*;
 use crate::db as db;
 use crate::loc::*;
 ///
+/// Main menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum MainMenu {
+   Links(String),      // Links menu
+   Notice,     // Notice menu
+   Subscribe,  // subscribe to receive notice
+   Help,
+   Done,       // Exit menu
+   Unknown,
+}
+//
+//
+impl MainMenu {
+   pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        match s.to_lowercase().as_str() {
+            "/notice" | "/Notice" => Self::Notice,
+            "/links" | "/Links" => Self::Links(s.to_owned()),
+            "/subscribe" | "/Subscribe" => Self::Subscribe,
+            "/help" | "/Help" => Self::Help,
+            "/done" | "/Done" => Self::Done,
+            "/back" | "/Back" => Self::Done,
+            "/exit" | "/Exit" => Self::Done,
+            _ => Self::Unknown,
+        }
+   }
+}
+///
 /// 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MenuItem {
@@ -20,14 +47,12 @@ pub struct MenuItem {
     pub command: String,
 }
 ///
-/// 
-pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
-    let user_id = state.user_id; // user needs to sync with cart
-    let chat_id = msg.chat.id;
-    let menu =  db::menu(user_id).await?;
+/// Create a MainMenu
+pub async fn enter(bot: &Bot, msg: &Message) -> HandlerResult {
+    let menu =  db::menu().await?;
     let markup = markup(&menu).await?;
     let text = "Main menu";
-    bot.send_message(chat_id, text)
+    bot.send_message(msg.chat.id, text)
         // .caption(text)
         .reply_markup(markup)
         .parse_mode(ParseMode::Html)
@@ -35,42 +60,19 @@ pub async fn enter(bot: Bot, msg: Message, state: MainState) -> HandlerResult {
         .await?;
     Ok(())
 }
-// ///
-// ///
-// async fn msg(bot: &Bot, user_id: UserId, text: &str) -> Result<(), String> {
-//     bot.send_message(user_id, text)
-//     .await
-//     .map_err(|err| format!("inline::msg {}", err))?;
-//     Ok(())
-// }
-// ///
-// /// 
-// pub async fn view(bot: &Bot, q: CallbackQuery) -> Result<(), String> {
-//     let user_id = q.from.id;
-//     log::debug!("menu.view | user_id: {}", user_id);
-//     // Load from storage
-//     let menu =  db::menu(user_id).await?;
-//     // // Collect info
-//     let markup = markup(&menu, user_id).await?;
-//     let text = format!("Navigation view");
-//     // Message to modify
-//     let message = q.message;
-//     if message.is_none() {
-//        // "Error, update message is invalid, please start again"
-//        let text = loc("Error, update message is invalid, please start again");
-//        msg(bot, user_id, &text).await?;
-//        return Ok(())
-//     }
-//     // let chat_id = ChatId::Id(message.chat_id());
-//     let message_id = message.unwrap().id;
-//     msg(bot, user_id, &text).await?;
-//     bot.edit_message_text(user_id, message_id, text)
-//         // .edit_message_media(user_id, message_id, media)
-//         .reply_markup(markup)
-//     .await
-//     .map_err(|err| format!("inline::view {}", err))?;
-//     Ok(())
-// }
+///
+/// Reloads a MainMenu
+pub async fn reload(bot: &Bot, msg: &Message) -> HandlerResult {
+    let menu =  db::menu().await?;
+    let markup = markup(&menu).await?;
+    let text = "Main menu";
+    bot.edit_message_text(msg.chat.id, msg.id, text)
+        // .edit_message_media(user_id, message_id, media)
+        .reply_markup(markup)
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
+}
 ///
 /// 
 async fn markup(menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {

@@ -1,6 +1,28 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+///
+/// Notice menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum NoticeMenu {
+   Group(String),   // Selected group to be noticed
+   Unknown(String), // Unknown command received
+   Done,            // Exit menu
+}
+//
+//
+impl NoticeMenu {
+   pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
+        match input {
+            ("/", "done" | "Done") => Self::Done,
+            ("/", "back" | "Back") => Self::Done,
+            ("/", "exit" | "Exit") => Self::Done,
+            ("/", input) => Self::Group(input.to_owned()),
+            (_, _) => Self::Unknown(s.to_owned()),
+        }
+   }
+}
 ///
 /// 
 #[derive(Debug, Clone)]
@@ -18,7 +40,7 @@ impl Default for NoticeState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
     log::debug!("notice.enter | state: {:#?}", state);
     let groups =  match db::subscriptions().await {
         Ok(groups) => groups,
@@ -55,7 +77,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
     };
     match msg.text() {
         Some(text) => {
-            let user_name = msg.from().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
+            let user_name = msg.from.clone().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
             log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
@@ -82,7 +104,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
     }
     let state = state.prev_state;
     dialogue.update(state.clone()).await?;
-    crate::states::reload(bot, msg, dialogue, state).await?;
+    crate::states::enter(bot, &msg, dialogue, state).await?;
     Ok(())
 }
 ///

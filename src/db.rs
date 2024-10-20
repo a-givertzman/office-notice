@@ -5,12 +5,12 @@ use teloxide::types::{ChatId, UserId};
 use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::User};
 ///
 /// 
-pub async fn menu(user_id: UserId) -> Result<IndexMap<String, MenuItem>, String> {
-    let _ = user_id;
+pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
     let menu: IndexMap<String, MenuItem> = IndexMap::from([
         ("Links", "/Links"),
         ("Notice", "/Notice"),
         ("Subscribe", "/Subscribe"),
+        ("Help", "/Help"),
     ])
         .into_iter()
         .map(|(title, command)| (title.to_owned(), MenuItem { title: title.to_owned(), command: command.to_owned()}))

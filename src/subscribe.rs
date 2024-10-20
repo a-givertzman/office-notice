@@ -1,6 +1,28 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+///
+/// Subscribe menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum SubscribeMenu {
+   Group(String),   // Selected group to subscribe on
+   Unknown(String), // Unknown command received
+   Done,            // Exit menu
+}
+//
+//
+impl SubscribeMenu {
+    pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
+        match input {
+            ("/", "done" | "Done") => Self::Done,
+            ("/", "back" | "Back") => Self::Done,
+            ("/", "exit" | "Exit") => Self::Done,
+            ("/", input) => Self::Group(input.to_owned()),
+            (_, _) => Self::Unknown(s.to_owned()),
+        }
+}
+}
 ///
 /// 
 #[derive(Debug, Clone)]
@@ -19,7 +41,7 @@ impl Default for SubscribeState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
     let user_id = state.user_id;
     let user_name = state.user.username.clone().unwrap_or(state.user.full_name());
     log::debug!("subscribe.enter | state: {:#?}", state);
