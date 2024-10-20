@@ -132,11 +132,21 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
     }
     let user = user.unwrap();
     let user_id = user.id;
-    let new_state = MainState { prev_state: state, user_id };
+    // let new_state = MainState { prev_state: state, user_id };
     // Insert or update info about user
     update_last_seen_full(&user).await?;
     log::debug!("states.start | user {} ({})", user.full_name(), user_id);
-    command(bot, msg, dialogue, new_state).await
+    let cmd_raw = msg.text().unwrap_or_default();
+    match cmd_raw {
+        "/start" | "/Start" => crate::states::enter(bot, &msg, dialogue, MainState { prev_state: state, user_id }).await,
+        _ => {
+            let text =  loc(format!("Please type '/Start' to begin"));
+            bot.send_message(msg.chat.id, text)
+                .await?;
+            Ok(())
+        }
+    }
+    // command(bot, msg, dialogue, new_state).await
 }
 ///
 /// 
@@ -191,36 +201,31 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
     }
     // Try to execute command and if it impossible notify about restart
     let cmd_raw = msg.text().unwrap_or_default();
-    log::debug!("states.command | user: {} ({}), input {} ", user_name, user_id, cmd_raw);
-    match cmd_raw {
-        "/start" | "/Start" => crate::states::enter(bot, &msg, dialogue, state).await?,//menu::enter(bot, msg, state).await?,
-        _ => {
-            let cmd = MainMenu::parse(cmd_raw, 0);
-            match cmd {
-                MainMenu::Links(level) =>   crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
-                MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
-                MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
-                MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, HelpState { prev_state: new_state }).await?,
-                MainMenu::Done =>                   crate::states::exit(bot, &msg, dialogue, state).await?,
-                MainMenu::Unknown => {
-                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
-                    // Report about a possible restart and loss of context
-                    if state.prev_state.restarted {
-                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
-                        // let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
-                        bot.send_message(chat_id, text)
-                            // .reply_markup(main_menu_markup(0))
-                            .await?;
-                    } else {
-                        // Process general commands without search if restarted (to prevent search submode commands)
-                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
-                        bot.send_message(chat_id, text)
-                            // .reply_markup(main_menu_markup(0))
-                            .await?;
-                        // crate::states::reload(bot, msg, dialogue, state).await?;
-                    }
-                }
-            };
+    log::debug!("states.command | input {}, user: {} ({})", cmd_raw, user_name, user_id);
+    let cmd = MainMenu::parse(cmd_raw, 0);
+    match cmd {
+        MainMenu::Links(level) =>   crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
+        MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
+        MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
+        MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, HelpState { prev_state: new_state }).await?,
+        MainMenu::Done =>                   crate::states::exit(bot, &msg, dialogue, state).await?,
+        MainMenu::Unknown => {
+            log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
+            // Report about a possible restart and loss of context
+            if state.prev_state.restarted {
+                let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
+                // let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
+                bot.send_message(chat_id, text)
+                    // .reply_markup(main_menu_markup(0))
+                    .await?;
+            } else {
+                // Process general commands without search if restarted (to prevent search submode commands)
+                let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
+                bot.send_message(chat_id, text)
+                    // .reply_markup(main_menu_markup(0))
+                    .await?;
+                // crate::states::reload(bot, msg, dialogue, state).await?;
+            }
         }
     };
     Ok(())
