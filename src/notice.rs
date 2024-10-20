@@ -98,9 +98,9 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
-    let state = state.prev_state;
+    // let state = state.prev_state;
     dialogue.update(state.clone()).await?;
-    crate::states::enter(bot, &msg, dialogue, state).await?;
+    crate::notice::enter(bot, &msg, dialogue, state).await?;
     Ok(())
 }
 ///
