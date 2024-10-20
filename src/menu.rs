@@ -74,6 +74,16 @@ pub async fn reload(bot: &Bot, msg: &Message) -> HandlerResult {
     Ok(())
 }
 ///
+/// Exits a MainMenu
+pub async fn exit(bot: &Bot, msg: &Message) -> HandlerResult {
+    let text = "Bye";
+    bot.edit_message_text(msg.chat.id, msg.id, text)
+        // .edit_message_media(user_id, message_id, media)
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
+}
+///
 /// 
 async fn markup(menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group

@@ -163,6 +163,16 @@ pub async fn reload(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainSt
     //     .await?;
     Ok(())
 }
+pub async fn exit(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
+    dialogue.update(state.prev_state).await?;
+    // let text =  loc("You are in the main menu");
+    // let chat_id = msg.chat.id;
+    menu::exit(&bot, msg).await?;
+    // bot.send_message(chat_id, text)
+    //     .reply_markup(main_menu_markup(0))
+    //     .await?;
+    Ok(())
+}
 ///
 ///
 // #[async_recursion]
@@ -191,7 +201,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainSt
                 MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
                 MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
                 MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, HelpState { prev_state: new_state }).await?,
-                MainMenu::Done =>                   crate::states::reload(bot, &msg, dialogue, state).await?,
+                MainMenu::Done =>                   crate::states::exit(bot, &msg, dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
                     // Report about a possible restart and loss of context
