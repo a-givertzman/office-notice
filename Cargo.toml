@@ -24,3 +24,6 @@ derive_more = { version = "^1.0", features = [ "from" ]}
 arraylib = "^0.3"
 reqwest = "^0.12"
 indexmap = { version = "^2.2", features = ["serde"] }
+
+[build]
+rustflags = ["-Clinker=rust-lld"]
