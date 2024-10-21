@@ -66,12 +66,7 @@ pub async fn reload(bot: &Bot, msg: &Message) -> HandlerResult {
     let menu =  db::menu().await?;
     let markup = markup(&menu).await?;
     let text = "Main menu";
-    bot.edit_message_text(msg.chat.id, msg.id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-        .parse_mode(ParseMode::Html)
-        .await?;
-    Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, text).await
 }
 ///
 /// Exits a MainMenu

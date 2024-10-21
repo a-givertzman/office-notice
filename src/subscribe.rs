@@ -41,7 +41,7 @@ impl Default for SubscribeState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
     let user_id = state.user_id;
     let user_name = state.user.username.clone().unwrap_or(state.user.full_name());
     log::debug!("subscribe.enter | state: {:#?}", state);
@@ -100,12 +100,13 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
 pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&groups, user_id).await?;
-    bot.edit_message_text(msg.chat.id, msg.id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-        .await
-        .map_err(|err| format!("inline::view {}", err))?;
-    Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
+    // bot.edit_message_text(msg.chat.id, msg.id, text)
+    //     // .edit_message_media(user_id, message_id, media)
+    //     .reply_markup(markup)
+    //     .await
+    //     .map_err(|err| format!("inline::view {}", err))?;
+    // Ok(())
 }
 ///
 /// 

@@ -141,7 +141,7 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
     log::debug!("states.start | user {} ({})", user.full_name(), user_id);
     let cmd_raw = msg.text().unwrap_or_default();
     match cmd_raw {
-        "/start" | "/Start" => crate::states::enter(bot, &msg, dialogue, MainState { prev_state: state, user_id }).await,
+        "/start" | "/Start" => crate::states::enter(&bot, &msg, dialogue, MainState { prev_state: state, user_id }).await,
         _ => {
             let text =  loc(format!("Please type '/Start' to begin"));
             bot.send_message(msg.chat.id, text)
@@ -153,11 +153,11 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
 }
 ///
 /// 
-pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
+pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state).await?;
     // let text =  loc("You are in the main menu");
     // let chat_id = msg.chat.id;
-    menu::enter(&bot, msg).await?;
+    menu::enter(bot, msg).await?;
     // bot.send_message(chat_id, text)
     //     .reply_markup(main_menu_markup(0))
     //     .await?;
@@ -176,11 +176,11 @@ pub async fn reload(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainSt
     //     .await?;
     Ok(())
 }
-pub async fn exit(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
+pub async fn exit(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state.prev_state).await?;
     // let text =  loc("You are in the main menu");
     // let chat_id = msg.chat.id;
-    menu::exit(&bot, msg).await?;
+    menu::exit(&bot, &msg).await?;
     // bot.send_message(chat_id, text)
     //     .reply_markup(main_menu_markup(0))
     //     .await?;
@@ -189,55 +189,89 @@ pub async fn exit(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainStat
 ///
 ///
 // #[async_recursion]
-pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
+pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State) -> HandlerResult {
     let chat_id = msg.chat.id;
     let user_name = format!("{} {}", msg.chat.first_name().unwrap_or(""), msg.chat.first_name().unwrap_or(""));
-    // For admin and regular users there is different interface
-    let user_id = state.user_id;
-    let new_state = MainState {
-        prev_state: StartState { restarted: false },
-        user_id,
-    };
-    // Update FSM
-    if state != new_state {
-        dialogue.update(new_state.to_owned()).await?;
+    let cmd_raw = msg.text().unwrap_or_default();
+    log::debug!("states.command | input '{}', from: {} ({:?})", cmd_raw, user_name, msg.from);
+    let cmd = MainMenu::parse(cmd_raw, 0);
+    match state {
+        State::Start(start_state) => {
+            // For admin and regular users there is different interface
+            log::debug!("states.command | State: {:?}", start_state);
+            match msg.from.clone() {
+                Some(from) => {
+                    let user_id = from.id;
+                    log::debug!("states.command | Input {}, user: {} ({})", cmd_raw, user_name, user_id);
+                    let new_state = MainState {
+                        prev_state: StartState { restarted: false },
+                        user_id,
+                    };
+                    // Update FSM
+                    dialogue.update(new_state.to_owned()).await?;
+                    crate::states::enter(&bot, &msg, dialogue, new_state).await?;
+                }
+                None => log::debug!("states.command | Cmd '{}' ignired because from: {} ({:?}), expected from regular user", cmd_raw, user_name, msg.from),
+            }
+        }
+        State::Main(main_state) => {
+            let user_id = main_state.user_id;
+            log::debug!("states.command | State: {:?}", main_state);
+            match cmd {
+                MainMenu::Links(level) =>   crate::links::enter(bot, msg, dialogue, LinksState {prev_state: main_state, level, child: IndexMap::new(), user_id}).await?,
+                MainMenu::Notice =>                 crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: main_state, user_id, ..Default::default()}).await?,
+                MainMenu::Subscribe =>              crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, user_id, ..Default::default() }).await?,
+                MainMenu::Help =>                   crate::help::enter(bot, msg, dialogue, HelpState { prev_state: main_state }).await?,
+                MainMenu::Done =>                   crate::states::exit(bot, msg, dialogue, main_state).await?,
+                MainMenu::Unknown => {
+                    log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
+                    // Report about a possible restart and loss of context
+                    if main_state.prev_state.restarted {
+                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
+                        // let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
+                        bot.send_message(chat_id, text)
+                            // .reply_markup(main_menu_markup(0))
+                            .await?;
+                    } else {
+                        // Process general commands without search if restarted (to prevent search submode commands)
+                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
+                        bot.send_message(chat_id, text)
+                        // .reply_markup(main_menu_markup(0))
+                        .await?;
+                        // crate::states::reload(bot, msg, dialogue, state).await?;
+                    }
+                    sleep(Duration::from_secs(2)).await;
+                    dialogue.update(main_state.prev_state).await?;
+                    crate::states::reload(bot.clone(), &msg, dialogue, main_state).await?
+                    // match crate::states::reload(bot.clone(), &msg, dialogue.clone(), state.prev_state).await {
+                    //     Ok(_) => todo!(),
+                    //     Err(_) => crate::states::exit(bot, &msg, dialogue, state).await?,
+                    // }
+                }
+            };
+        }
+        State::Links(links_state) => {
+            let user_id = links_state.user_id;
+            log::debug!("states.command | State: {:?}", links_state);
+            
+        }
+        State::NoticeMenu(notice_state) => {
+            let user_id = notice_state.user_id;
+            log::debug!("states.command | State: {:?}", notice_state);
+            
+        }
+        State::Subscribe(subscribe_state) => {
+            let user_id = subscribe_state.user_id;
+            log::debug!("states.command | State: {:?}", subscribe_state);
+            
+        }
+        State::Help(help_state) => {
+            log::debug!("states.command | State: {:?}", help_state);
+            
+        }
     }
     // Try to execute command and if it impossible notify about restart
-    let cmd_raw = msg.text().unwrap_or_default();
-    log::debug!("states.command | input {}, user: {} ({})", cmd_raw, user_name, user_id);
-    let cmd = MainMenu::parse(cmd_raw, 0);
-    match cmd {
-        MainMenu::Links(level) =>   crate::links::enter(bot, &msg, dialogue, LinksState {prev_state: new_state, level, child: IndexMap::new(), user_id}).await?,
-        MainMenu::Notice =>                 crate::notice::enter(bot, &msg, dialogue, NoticeState { prev_state: new_state, user_id, ..Default::default()}).await?,
-        MainMenu::Subscribe =>              crate::subscribe::enter(bot, &msg, dialogue, SubscribeState { prev_state: new_state, user_id, ..Default::default() }).await?,
-        MainMenu::Help =>                   crate::help::enter(&bot, &msg, dialogue, HelpState { prev_state: new_state }).await?,
-        MainMenu::Done =>                   crate::states::exit(bot, &msg, dialogue, state).await?,
-        MainMenu::Unknown => {
-            log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
-            // Report about a possible restart and loss of context
-            if state.prev_state.restarted {
-                let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
-                // let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
-                bot.send_message(chat_id, text)
-                    // .reply_markup(main_menu_markup(0))
-                    .await?;
-            } else {
-                // Process general commands without search if restarted (to prevent search submode commands)
-                let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
-                bot.send_message(chat_id, text)
-                // .reply_markup(main_menu_markup(0))
-                .await?;
-                // crate::states::reload(bot, msg, dialogue, state).await?;
-            }
-            sleep(Duration::from_secs(2)).await;
-            dialogue.update(state.prev_state).await?;
-            crate::states::reload(bot.clone(), &msg, dialogue, state).await?
-            // match crate::states::reload(bot.clone(), &msg, dialogue.clone(), state.prev_state).await {
-            //     Ok(_) => todo!(),
-            //     Err(_) => crate::states::exit(bot, &msg, dialogue, state).await?,
-            // }
-        }
-    };
+
     Ok(())
 }
 ///
@@ -279,21 +313,21 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             match cmd {
                 MainMenu::Links(level) => {
                     let state = LinksState {prev_state: state, level, child: IndexMap::new(), user_id };
-                    crate::links::enter(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?
+                    crate::links::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Notice => {
                     let state = NoticeState { prev_state: state, user_id, ..Default::default() };
-                    crate::notice::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::notice::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Subscribe => {
                     let state = SubscribeState { prev_state: state, user_id, ..Default::default() };
-                    crate::subscribe::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Help => {
                     let state = HelpState { prev_state: state };
-                    crate::help::enter(&bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::help::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
-                MainMenu::Done => crate::states::exit(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?,
+                MainMenu::Done => crate::states::exit(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | Main > user: {} ({}), Unknown command {}", user_name, user_id, input);
                 }
@@ -314,7 +348,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         child: state.child,
                         user_id: state.user_id,
                     };
-                    crate::links::enter(bot.clone(), q.regular_message().unwrap(), dialogue, state).await?
+                    crate::links::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 LinksMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }
@@ -333,11 +367,11 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         group,
                         user_id: state.user_id,
                     };
-                    crate::notice::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::notice::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 NoticeMenu::Unknown(text) => {
                     log::debug!("states.callback | Notice > Unknown command received: '{}'", text);
-                    crate::notice::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::notice::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 NoticeMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }
@@ -357,11 +391,11 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         user_id: state.user_id,
                         user: q.from.clone()
                     };
-                    crate::subscribe::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 SubscribeMenu::Unknown(text) => {
                     log::debug!("states.callback | Notice > Unknown command received: '{}'", text);
-                    crate::subscribe::enter(bot, q.regular_message().unwrap(), dialogue, state).await?
+                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 SubscribeMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }            

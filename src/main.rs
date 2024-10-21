@@ -1,5 +1,6 @@
 mod config;
 // mod general;
+mod message;
 mod loc;
 mod links;
 mod notice;

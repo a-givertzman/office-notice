@@ -1,5 +1,4 @@
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode}
- };
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
 use crate::{loc::loc, states::{HandlerResult, MainState, MyDialogue}};
 ///
 /// 
@@ -8,12 +7,11 @@ pub struct HelpState {
     pub prev_state: MainState,  // Where to go on Back btn
     // pub user_id: UserId,        // User id doing notice
 }
-
 ///
 /// 
-pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: HelpState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: HelpState) -> HandlerResult {
     dialogue.update(state.clone()).await?;
-    view(bot, msg, HELP_TEXT_RU).await
+    view(&bot, &msg, HELP_TEXT_RU).await
     // bot.send_message(chat_id, HELP_TEXT_RU)
     //     // .caption(text)
     //     .parse_mode(ParseMode::Html)
@@ -26,30 +24,7 @@ pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: HelpSt
 pub async fn view(bot: &Bot, msg: &Message, text: impl Into<String>) -> HandlerResult {
     let text = text.into();
     let markup = markup().await?;
-    let result = bot.edit_message_text(msg.chat.id, msg.id, text.clone())
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup.clone())
-        .parse_mode(ParseMode::Html)
-        .await;
-    match result {
-        Ok(_) => Ok(()),
-        Err(err) => {
-            match &err {
-                teloxide::RequestError::Api(api_error) => match api_error {
-                    teloxide::ApiError::MessageCantBeEdited => {
-                        bot.send_message(msg.chat.id, text)
-                        .reply_markup(markup)
-                        .parse_mode(ParseMode::Html)
-                        .await?;
-                        Ok(())
-                    },
-                    _ => Err(Box::new(err)),
-                },
-                _ => Err(Box::new(err)),
-            }
-        }
-    }
-    // Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
 }
 ///
 /// 

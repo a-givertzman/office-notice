@@ -49,7 +49,7 @@ pub struct LinksState {
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
     let user_id = state.user_id;
     log::debug!("links.enter | state: {:#?}", state);
     let links =  match state.child.get(&state.level) {
@@ -60,21 +60,22 @@ pub async fn enter(bot: Bot, msg: &Message, dialogue: MyDialogue, mut state: Lin
     state.child = links.child.clone();
     let state = state.to_owned();
     dialogue.update(state.clone()).await?;
-    view(bot, msg, state, links).await?;
+    view(&bot, &msg, state, links).await?;
     Ok(())
 }
 ///
 /// 
-pub async fn view(bot: Bot, msg: &Message, state: LinksState, links: Links) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: LinksState, links: Links) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));
-    bot.edit_message_text(msg.chat.id, msg.id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-        .await
-        .map_err(|err| format!("inline::view {}", err))?;
-    Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
+    // bot.edit_message_text(msg.chat.id, msg.id, text)
+    //     // .edit_message_media(user_id, message_id, media)
+    //     .reply_markup(markup)
+    //     .await
+    //     .map_err(|err| format!("inline::view {}", err))?;
+    // Ok(())
 }
 ///
 /// 
