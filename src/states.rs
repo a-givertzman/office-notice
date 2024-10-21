@@ -252,19 +252,19 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             };
         }
         State::Links(links_state) => {
-            let user_id = links_state.user_id;
+            // let user_id = links_state.user_id;
             log::debug!("states.command | State: {:?}", links_state);
             dialogue.update(links_state.prev_state).await?;
             crate::states::reload(bot.clone(), &msg, dialogue, links_state.prev_state).await?
         }
         State::NoticeMenu(notice_state) => {
-            let user_id = notice_state.user_id;
+            // let user_id = notice_state.user_id;
             log::debug!("states.command | State: {:?}", notice_state);
             dialogue.update(notice_state.prev_state).await?;
             crate::states::reload(bot.clone(), &msg, dialogue, notice_state.prev_state).await?
         }
         State::Subscribe(subscribe_state) => {
-            let user_id = subscribe_state.user_id;
+            // let user_id = subscribe_state.user_id;
             log::debug!("states.command | State: {:?}", subscribe_state);
             dialogue.update(subscribe_state.prev_state).await?;
             crate::states::reload(bot.clone(), &msg, dialogue, subscribe_state.prev_state).await?
