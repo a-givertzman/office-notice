@@ -1,8 +1,8 @@
-FROM rust:1.80.0-alpine AS builder
+FROM rust:1.82.0-alpine3.20 AS builder
 RUN apk upgrade --no-cache
 RUN apk add --update --no-cache \
     pkgconfig \
-    musl-dev \
+    libc-dev \
     openssl-dev
 WORKDIR /build
 COPY ./src ./src
