@@ -3,7 +3,7 @@
     "links": [
         {"title": "ТКЗ", "url": "http://tkz-cranes.ru/about/"},
         {"title": "S&A-Lab", "url": "https://sa-lab.dev/"},
-        {"title": "Redmine", "url": "http://tkz-erm-01.ad.tkz-cranes.ru/"}
+        {"title": "Redmine", "url": "http://10.131.115.12"}
     ],
     "child": {
         "Wiki": {
@@ -11,13 +11,6 @@
             "links": [
                 {"title": "Wiki home", "url": "http://192.168.120.90:8083/bin/view/Main/"},
                 {"title": "Wiki Прием на работу", "url": "http://192.168.120.90:8083/bin/view/%D0%9E%D0%A0%D0%93%D0%90%D0%9D%D0%98%D0%97%D0%90%D0%A6%D0%98%D0%9E%D0%9D%D0%9D%D0%90%D0%AF/%D0%9F%D0%A0%D0%98%D0%95%D0%9C%20%D0%9D%D0%90%20%D0%A0%D0%90%D0%91%D0%9E%D0%A2%D0%A3/"}
-            ]
-        },
-        "Wiki1": {
-            "title": "Wiki1",
-            "links": [
-                {"title": "Wiki1 home", "url": "http://192.168.120.90:8083/bin/view/Main/"},
-                {"title": "Wiki1 Прием на работу", "url": "http://192.168.120.90:8083/bin/view/%D0%9E%D0%A0%D0%93%D0%90%D0%9D%D0%98%D0%97%D0%90%D0%A6%D0%98%D0%9E%D0%9D%D0%9D%D0%90%D0%AF/%D0%9F%D0%A0%D0%98%D0%95%D0%9C%20%D0%9D%D0%90%20%D0%A0%D0%90%D0%91%D0%9E%D0%A2%D0%A3/"}
             ]
         }
     }
