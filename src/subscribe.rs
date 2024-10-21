@@ -1,6 +1,28 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+///
+/// Subscribe menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum SubscribeMenu {
+   Group(String),   // Selected group to subscribe on
+   Unknown(String), // Unknown command received
+   Done,            // Exit menu
+}
+//
+//
+impl SubscribeMenu {
+    pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
+        match input {
+            ("/", "done" | "Done") => Self::Done,
+            ("/", "back" | "Back") => Self::Done,
+            ("/", "exit" | "Exit") => Self::Done,
+            ("/", input) => Self::Group(input.to_owned()),
+            (_, _) => Self::Unknown(s.to_owned()),
+        }
+}
+}
 ///
 /// 
 #[derive(Debug, Clone)]
@@ -78,12 +100,13 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
 pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&groups, user_id).await?;
-    bot.edit_message_text(msg.chat.id, msg.id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-        .await
-        .map_err(|err| format!("inline::view {}", err))?;
-    Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
+    // bot.edit_message_text(msg.chat.id, msg.id, text)
+    //     // .edit_message_media(user_id, message_id, media)
+    //     .reply_markup(markup)
+    //     .await
+    //     .map_err(|err| format!("inline::view {}", err))?;
+    // Ok(())
 }
 ///
 /// 

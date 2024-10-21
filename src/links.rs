@@ -1,7 +1,26 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::loc, states::{HandlerResult, MainState, MyDialogue}};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}};
+///
+/// Links menu
+#[derive(Debug, Clone, PartialEq)]
+pub enum LinksMenu {
+   Link(String),    // Links menu
+   Done,            // Exit menu
+}
+//
+//
+impl LinksMenu {
+   pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
+        match s.to_lowercase().as_str() {
+            "/done" | "/Done" => Self::Done,
+            "/back" | "/Back" => Self::Done,
+            "/exit" | "/Exit" => Self::Done,
+            _ => Self::Link(s.strip_prefix('/').map(|v| v.to_owned()).unwrap()),
+        }
+   }
+}
 ///
 /// 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,21 +60,22 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: Link
     state.child = links.child.clone();
     let state = state.to_owned();
     dialogue.update(state.clone()).await?;
-    view(bot, msg, state, links).await?;
+    view(&bot, &msg, state, links).await?;
     Ok(())
 }
 ///
 /// 
-pub async fn view(bot: Bot, msg: Message, state: LinksState, links: Links) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: LinksState, links: Links) -> HandlerResult {
     let user_id = state.user_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));
-    bot.edit_message_text(msg.chat.id, msg.id, text)
-        // .edit_message_media(user_id, message_id, media)
-        .reply_markup(markup)
-        .await
-        .map_err(|err| format!("inline::view {}", err))?;
-    Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
+    // bot.edit_message_text(msg.chat.id, msg.id, text)
+    //     // .edit_message_media(user_id, message_id, media)
+    //     .reply_markup(markup)
+    //     .await
+    //     .map_err(|err| format!("inline::view {}", err))?;
+    // Ok(())
 }
 ///
 /// 

@@ -20,7 +20,17 @@
         "contact": null,
         "address": null,
         "subscriptions": []
-      },
+      }
+    }
+  },
+  "-4224543713": {
+    "id": "-4224543713",
+    "title": "Office-group-1",
+    "members": {}
+  },
+  "SA_LAB_GROUP": {
+    "title": "S&A Lab",
+    "members": {
       "7038555815": {
         "id": "7038555815",
         "name": "Anton",
@@ -29,10 +39,5 @@
         "subscriptions": []
       }
     }
-  },
-  "-4224543713": {
-    "id": "-4224543713",
-    "title": "Office-group-1",
-    "members": {}
   }
 }

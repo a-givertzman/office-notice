@@ -1,4 +1,5 @@
 use strum::AsRefStr;
+use teloxide::types::ReplyParameters;
 use teloxide::{prelude::*, types::ParseMode, };
 use crate::states::*;
 use crate::loc::*;
@@ -106,7 +107,7 @@ pub async fn update_input(bot: Bot, msg: Message, dialogue: MyDialogue, state: M
         // Add info with qoute. "Reply {}{}"
         let text = loc(format!("Reply {}{}", Command::Message(input.to_owned()).as_ref(), state.prev_state.user_id));
         bot.send_message(state.receiver, &text)
-            .reply_to_message_id(msg.id).await?;
+            .reply_parameters(ReplyParameters::new(msg.id)).await?;
         // "Message sent"
         loc("Message sent")
     };
