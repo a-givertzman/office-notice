@@ -1,6 +1,9 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{
+    db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions,
+    user::user_role::UserRole,
+};
 ///
 /// Subscribe menu
 #[derive(Debug, Clone, PartialEq)]
@@ -76,13 +79,21 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
             }
             None => {
                 log::debug!("subscribe.subscribe | Adding subscription '{}' ({}) to the group '{}' ", user_name, user_id, group.title);
-                let user = crate::user::User {
-                    id: ChatId::from(user_id),
-                    name: user_name.to_owned(),
-                    contact: None,
-                    address: None,
-                    subscriptions: vec![],
-                };
+                //  {
+                //     Ok(user) => user,
+                //     Err(_) => {
+                //         crate::db::user_insert(user_id, user_name, contact, address, last_seen, UserRole::Guest).await?;
+                //         crate::user::user::User {
+                //             id: ChatId::from(user_id),
+                //             name: user_name.to_owned(),
+                //             contact: None,
+                //             address: None,
+                //             subscriptions: vec![],
+                //             role: vec![UserRole::Guest],
+                //         }                        
+                //     },
+                // }
+                let user = crate::db::user(&user_id.into()).await?;
                 if let Some(origin) = group.members.insert(user_id_str.to_owned(), user) {
                     log::warn!("subscribe.subscribe | Error adding subscription '{}' ({}) to the group '{}' - olready exists", user_name, user_id, group.title);
                     group.members.insert(user_id_str.to_owned(), origin);

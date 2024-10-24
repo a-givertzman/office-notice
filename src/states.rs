@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use chrono::Utc;
 use derive_more::From;
 use indexmap::IndexMap;
 use teloxide::{prelude::*,
@@ -7,7 +8,7 @@ use teloxide::{prelude::*,
    dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
 };
 use tokio::time::sleep;
-use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -135,7 +136,6 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
     }
     let user = user.unwrap();
     let user_id = user.id;
-    // let new_state = MainState { prev_state: state, user_id };
     // Insert or update info about user
     update_last_seen_full(&user).await?;
     log::debug!("states.start | user {} ({})", user.full_name(), user_id);
@@ -413,19 +413,8 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
     }
     Ok(())
 }
-// ///
-// /// 
-// pub fn main_menu_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-//     let commands = vec![
-//         loc("🛒"),
-//         loc("Все"),
-//         loc("Открыто"),
-//         loc("⚙"),
-//     ];
-//     kb_markup(vec![commands])
-// }
 ///
-///
+/// Update or insert user
 async fn update_last_seen_full(user: &User) -> Result<(), String> {
     log::debug!("states.update_last_seen_full | user: {} ({})", user.full_name(), user.id);
     let user_id = user.id.0;
@@ -436,25 +425,6 @@ async fn update_last_seen_full(user: &User) -> Result<(), String> {
     let contact = if let Some(username) = &user.username {
         format!("{}", username)
     } else {String::from("-")};
-    db::user_insert(user_id, name, Some(contact), None).await?;
+    db::user_insert(user_id, name, Some(contact), None, Some(Utc::now()), &[UserRole::Guest]).await?;
     Ok(())
 }
-// ///
-// /// Frequently used menu
-// pub fn cancel_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-//     kb_markup(vec![vec![loc("/")]])
-// }
-// ///
-// /// Construct keyboard from strings
-// pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
-//     let kb: Vec<Vec<KeyboardButton>> = keyboard.iter()
-//         .map(|row| {
-//             row.iter()
-//             .map(|label| KeyboardButton::new(label))
-//             .collect()
-//         })
-//         .collect();
-//     let markup = KeyboardMarkup::new(kb)
-//         .resize_keyboard();
-//     ReplyMarkup::Keyboard(markup)
-// }

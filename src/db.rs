@@ -1,8 +1,9 @@
 use std::{fs, path::Path};
+use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::User};
+use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::{user::User, user_role::UserRole}};
 ///
 /// 
 pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
@@ -19,7 +20,7 @@ pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
 }
 ///
 /// 
-pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>) -> Result<(), String> {
+pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>, last_seen: Option<DateTime<Utc>>, role: &[UserRole]) -> Result<(), String> {
     let path = "./assets/users.json";
     let mut users = match users(path).await {
         Ok(users) => users,
@@ -33,6 +34,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
             user.name = name.to_owned();
             user.contact = contact.clone();
             user.address = address.clone();
+            user.last_seen = last_seen;
         }
         None => {
             users.insert(
@@ -43,6 +45,8 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
                     contact: contact,
                     address: address,
                     subscriptions: vec![],
+                    last_seen,
+                    role: role.into(),
                 } 
             );
         }
@@ -64,15 +68,15 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
 ///
 /// Returns user from storage
 #[allow(unused)]
-pub async fn user(user_id: u64) -> Result<User, String> {
+pub async fn user(chat_id: &ChatId) -> Result<User, String> {
     let path = "./assets/users.json";
     log::info!("db.user | config: {:?}", path);
     match load(path) {
         Ok(users) => {
             let users: IndexMap<String, User> = users;
-            match users.get(&user_id.to_string()) {
+            match users.get(&format!("{}", chat_id.0)) {
                 Some(user) => Ok(user.to_owned()),
-                None => Err(format!("db.user | User with id '{}' - not found", user_id)),
+                None => Err(format!("db.user | User with id '{}' - not found", chat_id)),
             }
         }
         Err(err) => Err(format!("db.user | Error: {:#?}", err)),

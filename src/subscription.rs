@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use crate::user::User;
+use crate::user::user::User;
 ///
 /// 
 pub type Subscriptions = IndexMap<String, Subscription>;
