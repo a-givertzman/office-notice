@@ -13,6 +13,7 @@ pub struct User {
    pub address: Option<String>,
    #[serde(default)]
    pub subscriptions: Vec<Subscription>,
+   pub role: Vec<USerRole>,
 }
 ///
 /// Parse chat_id from / to string
@@ -28,3 +29,6 @@ mod chat_id {
             .and_then(|str| Ok(ChatId(str.parse().unwrap())) )
     }
 }
+///
+/// User role
+mod 

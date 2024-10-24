@@ -1,9 +1,11 @@
 {
+  "posible-user-roles": ["admin", "moderator", "member", "guest"],
   "7038555815": {
     "id": "7038555815",
     "name": "Anton",
     "contact": "-",
     "address": null,
-    "subscriptions": []
+    "subscriptions": [],
+    "role": ["admin", "moderator"]
   }
 }
