@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, message::fmt_from, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::{loc, LocaleTag}, message::{fmt_from, send_message_with_header}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]
@@ -71,21 +71,23 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
             IndexMap::new()
         }
     };
-    // let user = db::user(&state.user_id.into()).await?;
+    let user = db::user(&state.user_id.into()).await?;
+    // let user_name = msg.from.clone().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
     match msg.text() {
         Some(text) => {
-            let user_name = msg.from.clone().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
-            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
+            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.user_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 if let Some(group_id) = &group.id {
-                    if let Err(err) = bot.send_message(group_id.to_owned(), format!("{}\n{}", fmt_from(&user_name), text)).await {
+                    if let Err(err) = send_message_with_header(&bot, group_id.to_owned(), &fmt_from(&user.name), text).await {
+                        // bot.send_message(group_id.to_owned(), format!("{}\n{}", fmt_from(&user.name), text)).parse_mode(ParseMode::MarkdownV2).await {
                         log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
                     };
                 }
                 for (_, receiver) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", receiver.name, receiver.id);
-                    if let Err(err) = bot.send_message(receiver.id, format!("{}\n{}", fmt_from(&user_name), text)).await {
+                    if let Err(err) = send_message_with_header(&bot, receiver.id, &fmt_from(&user.name), text).await {
+                        // bot.send_message(receiver.id, format!("{}\n{}", fmt_from(&user.name), text)).await {
                         log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", receiver.name, receiver.id, err);
                     };
                 }

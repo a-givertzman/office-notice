@@ -1,4 +1,4 @@
-use teloxide::{payloads::{EditMessageTextSetters, SendMessageSetters}, prelude::Requester, types::{InlineKeyboardMarkup, Message, ParseMode}, Bot};
+use teloxide::{payloads::{EditMessageTextSetters, SendMessageSetters}, prelude::Requester, types::{InlineKeyboardMarkup, Message, ParseMode, Recipient}, Bot};
 use crate::states::HandlerResult;
 ///
 /// Edit current message if possible or sending new one
@@ -25,6 +25,15 @@ pub async fn edit_message_text_or_send(bot: &Bot, msg: &Message, markup: &Inline
             _ => Err(Box::new(err)),
         }
     }
+}
+///
+/// Sends message with header
+pub async fn send_message_with_header(bot: &Bot, chat_id: impl Into<Recipient>, header: &str, text: &str) -> HandlerResult {
+    bot
+        .send_message(chat_id, format!("{}\n{}", header, text))
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+    Ok(())
 }
 ///
 /// Covers with marckdown formating for `From Caption`
