@@ -31,12 +31,12 @@ pub async fn edit_message_text_or_send(bot: &Bot, msg: &Message, markup: &Inline
 pub async fn send_message_with_header(bot: &Bot, chat_id: impl Into<Recipient>, header: &str, text: &str) -> HandlerResult {
     bot
         .send_message(chat_id, format!("{}\n{}", header, text))
-        // .parse_mode(ParseMode::MarkdownV2)
+        .parse_mode(ParseMode::Html)
         .await?;
     Ok(())
 }
 ///
 /// Covers with marckdown formating for `From Caption`
 pub fn fmt_from(input: &str) -> String {
-    format!("**{}**", input)
+    format!("<b>{}:</b>", input)
 }
