@@ -2,14 +2,9 @@ use std::time::Duration;
 use chrono::Utc;
 use derive_more::From;
 use indexmap::IndexMap;
-use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{ParseMode, User, UserId}
-};
+use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{User, UserId}};
 use tokio::time::sleep;
-use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::fmt_from, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
-// use crate::database as db;
-// use crate::gear::*;
-// use crate::cart::*;
-// use crate::general::MessageState;
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
 use crate::loc::*;
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -209,51 +204,50 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
                         crate::links::enter(bot, msg, dialogue, LinksState {prev_state: main_state, level, child: IndexMap::new(), user_id}).await?
                     } else {
-                        let text =  loc(format!("{}\n{}, you can't access shared resources according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
-                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                        send_message_with_header(
+                            &bot, chat_id, BOT_NAME,
+                            &loc(format!("{}, you can't access shared resources according to your roles: \n{:?}", user.name, user.role))
+                        ).await?;
                     }
                 }
                 MainMenu::Notice => {
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender]) {
                         crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: main_state, user_id, ..Default::default()}).await?
                     } else {
-                        let text =  loc(format!("{}\n{}, you can't send notice's according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
-                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                        send_message_with_header(
+                            &bot, chat_id, BOT_NAME,
+                            &loc(format!("{}, you can't send notice's according to your roles: \n{:?}", user.name, user.role)),
+                        ).await?;
                     }
                 }
                 MainMenu::Subscribe => {
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
                         crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, user_id, ..Default::default() }).await?
                     } else {
-                        let text =  loc(format!("{}\n{}, you can't subscribe for notice's according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
-                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                        send_message_with_header(
+                            &bot, chat_id, BOT_NAME,
+                            &loc(format!("{}, you can't subscribe for notice's according to your roles: \n{:?}", user.name, user.role)),
+                        ).await?;
                     }
                 }
-                MainMenu::Help =>                   crate::help::enter(bot, msg, dialogue, HelpState { prev_state: main_state }).await?,
-                MainMenu::Done =>                   crate::states::exit(bot, msg, dialogue, main_state).await?,
+                MainMenu::Help => crate::help::enter(bot, msg, dialogue, HelpState { prev_state: main_state }).await?,
+                MainMenu::Done => crate::states::exit(bot, msg, dialogue, main_state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
                     // Report about a possible restart and loss of context
                     if main_state.prev_state.restarted {
                         let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
-                            // .reply_markup(main_menu_markup(0))
                             .await?;
                     } else {
                         // Process general commands without search if restarted (to prevent search submode commands)
                         let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
-                        // .reply_markup(main_menu_markup(0))
                         .await?;
-                        // crate::states::reload(bot, msg, dialogue, state).await?;
                     }
                     sleep(Duration::from_secs(2)).await;
                     dialogue.update(main_state.prev_state).await?;
                     crate::states::reload(bot.clone(), &msg, dialogue, main_state).await?
-                    // match crate::states::reload(bot.clone(), &msg, dialogue.clone(), state.prev_state).await {
-                    //     Ok(_) => todo!(),
-                    //     Err(_) => crate::states::exit(bot, &msg, dialogue, state).await?,
-                    // }
                 }
             };
         }

@@ -71,7 +71,7 @@ pub async fn reload(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
 ///
 /// Exits a MainMenu
 pub async fn exit(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
-    let text = "Bye";
+    let text = format!("Bye, {}", user.name);
     bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
         .parse_mode(ParseMode::Html)
@@ -79,25 +79,25 @@ pub async fn exit(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     Ok(())
 }
 ///
-/// 
+/// Returns MainMenu items
 async fn markup(user: &User, menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group
     let buttons: Vec<InlineKeyboardButton> = menu.iter()
         .filter(|(key, _menu_item)| {
             match key.as_str() {
                 "Links" => {
-                    true
+                    user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member])
                 }
                 "Notice" => {
-                    user.has_role(&[UserRole::Member, UserRole::Member, UserRole::Admin])
+                    user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender])
                 }
                 "Subscribe" => {
-                    true
+                    user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member])
                 }
                 "Help" => {
-                    true
+                    user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member])
                 }
-                _ => false,
+                _ => user.has_role(&[UserRole::Admin]),
             }
         })
         .map(|(_id, menu_item)| {

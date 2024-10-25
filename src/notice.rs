@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, loc::{loc, LocaleTag}, message::send_message_with_header, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]
@@ -71,21 +71,21 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
             IndexMap::new()
         }
     };
+    let user = db::user(&state.user_id.into()).await?;
     match msg.text() {
         Some(text) => {
-            let user_name = msg.from.clone().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
-            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user_name, state.user_id, text);
+            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.user_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 if let Some(group_id) = &group.id {
-                    if let Err(err) = bot.send_message(group_id.to_owned(), text).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
+                    if let Err(err) = send_message_with_header(&bot, group_id.to_owned(), &user.name, text).await {
+                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
                     };
                 }
-                for (_, user) in &group.members {
-                    log::debug!("notice.notice | \t member '{}' ({})", user.name, user.id);
-                    if let Err(err) = bot.send_message(user.id, text).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", user.name, user.id, err);
+                for (_, receiver) in &group.members {
+                    log::debug!("notice.notice | \t member '{}' ({})", receiver.name, receiver.id);
+                    if let Err(err) = send_message_with_header(&bot, receiver.id, &user.name, text).await {
+                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", receiver.name, receiver.id, err);
                     };
                 }
             } else {
@@ -98,7 +98,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
-    // let state = state.prev_state;
+    let state = NoticeState { prev_state: state.prev_state, user_id: state.user_id,  ..Default::default() };
     dialogue.update(state.clone()).await?;
     crate::notice::enter(bot.to_owned(), msg.to_owned(), dialogue, state).await?;
     Ok(())
@@ -108,13 +108,8 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
 pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
     let _user_id = state.user_id;
     let markup = markup(&groups, is_message).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
-    // bot.edit_message_text(msg.chat.id, msg.id, text)
-    //     // .edit_message_media(user_id, message_id, media)
-    //     .reply_markup(markup)
-    //     .await
-    //     .map_err(|err| format!("inline::view {}", err))?;
-    // Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await?;
+    Ok(())
 }
 ///
 /// 
