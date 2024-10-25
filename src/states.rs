@@ -167,7 +167,7 @@ pub async fn exit(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState
     Ok(())
 }
 ///
-///
+/// Handles command from users
 // #[async_recursion]
 pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State) -> HandlerResult {
     let chat_id = msg.chat.id;
@@ -299,7 +299,7 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
     Ok(())
 }
 ///
-/// 
+/// Handles command callbacks
 pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: State) -> HandlerResult {
     let user_id = q.from.id;
     let user_name = q.from.full_name();
