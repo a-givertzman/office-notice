@@ -1,13 +1,11 @@
 use std::time::Duration;
-
+use chrono::Utc;
 use derive_more::From;
 use indexmap::IndexMap;
-use teloxide::{prelude::*,
-   types::{User, UserId,},
-   dispatching::{dialogue::{self, InMemStorage}, UpdateHandler, UpdateFilterExt, },
+use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{ParseMode, User, UserId}
 };
 use tokio::time::sleep;
-use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}};
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::fmt_from, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
 // use crate::database as db;
 // use crate::gear::*;
 // use crate::cart::*;
@@ -15,8 +13,8 @@ use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, Ma
 use crate::loc::*;
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
-
-// FSM states
+///
+/// FSM states
 #[derive(Debug, Clone, From)]
 pub enum State {
    Start(StartState),   // initial state
@@ -135,7 +133,6 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
     }
     let user = user.unwrap();
     let user_id = user.id;
-    // let new_state = MainState { prev_state: state, user_id };
     // Insert or update info about user
     update_last_seen_full(&user).await?;
     log::debug!("states.start | user {} ({})", user.full_name(), user_id);
@@ -155,12 +152,8 @@ async fn start(bot: Bot, msg: Message, dialogue: MyDialogue, state: StartState) 
 /// 
 pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state).await?;
-    // let text =  loc("You are in the main menu");
-    // let chat_id = msg.chat.id;
-    menu::enter(bot, msg).await?;
-    // bot.send_message(chat_id, text)
-    //     .reply_markup(main_menu_markup(0))
-    //     .await?;
+    let user = db::user(&msg.chat.id).await?;
+    menu::enter(bot, msg, &user).await?;
     Ok(())
 }
 
@@ -168,22 +161,14 @@ pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: MainSt
 /// 
 pub async fn reload(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state).await?;
-    // let text =  loc("You are in the main menu");
-    // let chat_id = msg.chat.id;
-    menu::reload(&bot, msg).await?;
-    // bot.send_message(chat_id, text)
-    //     .reply_markup(main_menu_markup(0))
-    //     .await?;
+    let user = db::user(&msg.chat.id).await?;
+    menu::reload(&bot, msg, &user).await?;
     Ok(())
 }
 pub async fn exit(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state.prev_state).await?;
-    // let text =  loc("You are in the main menu");
-    // let chat_id = msg.chat.id;
-    menu::exit(&bot, &msg).await?;
-    // bot.send_message(chat_id, text)
-    //     .reply_markup(main_menu_markup(0))
-    //     .await?;
+    let user = db::user(&msg.chat.id).await?;
+    menu::exit(&bot, &msg, &user).await?;
     Ok(())
 }
 ///
@@ -191,9 +176,10 @@ pub async fn exit(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState
 // #[async_recursion]
 pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State) -> HandlerResult {
     let chat_id = msg.chat.id;
+    let user = db::user(&msg.chat.id).await?;
     let user_name = format!("{} {}", msg.chat.first_name().unwrap_or(""), msg.chat.first_name().unwrap_or(""));
     let cmd_raw = msg.text().unwrap_or_default();
-    log::debug!("states.command | input '{}', from: {} ({:?})", cmd_raw, user_name, msg.from);
+    log::debug!("states.command | Input '{}', from: {} ({:?})", cmd_raw, user.name, msg.from);
     let cmd = MainMenu::parse(cmd_raw, 0);
     // Try to execute command and if it impossible notify about restart
     match state {
@@ -219,23 +205,43 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             let user_id = main_state.user_id;
             log::debug!("states.command | State: {:?}", main_state);
             match cmd {
-                MainMenu::Links(level) =>   crate::links::enter(bot, msg, dialogue, LinksState {prev_state: main_state, level, child: IndexMap::new(), user_id}).await?,
-                MainMenu::Notice =>                 crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: main_state, user_id, ..Default::default()}).await?,
-                MainMenu::Subscribe =>              crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, user_id, ..Default::default() }).await?,
+                MainMenu::Links(level) => {
+                    if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
+                        crate::links::enter(bot, msg, dialogue, LinksState {prev_state: main_state, level, child: IndexMap::new(), user_id}).await?
+                    } else {
+                        let text =  loc(format!("{}\n{}, you can't access shared resources according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
+                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                    }
+                }
+                MainMenu::Notice => {
+                    if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender]) {
+                        crate::notice::enter(bot, msg, dialogue, NoticeState { prev_state: main_state, user_id, ..Default::default()}).await?
+                    } else {
+                        let text =  loc(format!("{}\n{}, you can't send notice's according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
+                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                    }
+                }
+                MainMenu::Subscribe => {
+                    if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
+                        crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, user_id, ..Default::default() }).await?
+                    } else {
+                        let text =  loc(format!("{}\n{}, you can't subscribe for notice's according to your roles: \n{:?}", fmt_from(BOT_NAME), user.name, user.role));
+                        bot.send_message(chat_id, text).parse_mode(ParseMode::MarkdownV2).await?;
+                    }
+                }
                 MainMenu::Help =>                   crate::help::enter(bot, msg, dialogue, HelpState { prev_state: main_state }).await?,
                 MainMenu::Done =>                   crate::states::exit(bot, msg, dialogue, main_state).await?,
                 MainMenu::Unknown => {
                     log::debug!("states.command | user: {} ({}), Unknown command {}", user_name, user_id, cmd_raw);
                     // Report about a possible restart and loss of context
                     if main_state.prev_state.restarted {
-                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
-                        // let text =  loc("Извините, бот был перезапущен"); // Sorry, the bot has been restarted
+                        let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
                             // .reply_markup(main_menu_markup(0))
                             .await?;
                     } else {
                         // Process general commands without search if restarted (to prevent search submode commands)
-                        let text =  loc(format!("Unknown command '{}'", cmd_raw)); // Sorry, the bot has been restarted
+                        let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
                         // .reply_markup(main_menu_markup(0))
                         .await?;
@@ -413,19 +419,8 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
     }
     Ok(())
 }
-// ///
-// /// 
-// pub fn main_menu_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-//     let commands = vec![
-//         loc("🛒"),
-//         loc("Все"),
-//         loc("Открыто"),
-//         loc("⚙"),
-//     ];
-//     kb_markup(vec![commands])
-// }
 ///
-///
+/// Update or insert user
 async fn update_last_seen_full(user: &User) -> Result<(), String> {
     log::debug!("states.update_last_seen_full | user: {} ({})", user.full_name(), user.id);
     let user_id = user.id.0;
@@ -436,25 +431,6 @@ async fn update_last_seen_full(user: &User) -> Result<(), String> {
     let contact = if let Some(username) = &user.username {
         format!("{}", username)
     } else {String::from("-")};
-    db::user_insert(user_id, name, Some(contact), None).await?;
+    db::user_insert(user_id, name, Some(contact), None, Some(Utc::now()), &[UserRole::Guest]).await?;
     Ok(())
 }
-// ///
-// /// Frequently used menu
-// pub fn cancel_markup(_loc_tag: LocaleTag) -> ReplyMarkup {
-//     kb_markup(vec![vec![loc("/")]])
-// }
-// ///
-// /// Construct keyboard from strings
-// pub fn kb_markup(keyboard: Vec<Vec<String>>) -> ReplyMarkup {
-//     let kb: Vec<Vec<KeyboardButton>> = keyboard.iter()
-//         .map(|row| {
-//             row.iter()
-//             .map(|label| KeyboardButton::new(label))
-//             .collect()
-//         })
-//         .collect();
-//     let markup = KeyboardMarkup::new(kb)
-//         .resize_keyboard();
-//     ReplyMarkup::Keyboard(markup)
-// }

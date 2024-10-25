@@ -9,7 +9,7 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
 use arraylib::iter::IteratorExt;
-use crate::states::*;
+use crate::{states::*, user::{user::User, user_role::UserRole}};
 use crate::db as db;
 use crate::loc::*;
 ///
@@ -48,9 +48,9 @@ pub struct MenuItem {
 }
 ///
 /// Create a MainMenu
-pub async fn enter(bot: &Bot, msg: &Message) -> HandlerResult {
+pub async fn enter(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     let menu =  db::menu().await?;
-    let markup = markup(&menu).await?;
+    let markup = markup(user, &menu).await?;
     let text = "Main menu";
     bot.send_message(msg.chat.id, text)
         // .caption(text)
@@ -62,15 +62,15 @@ pub async fn enter(bot: &Bot, msg: &Message) -> HandlerResult {
 }
 ///
 /// Reloads a MainMenu
-pub async fn reload(bot: &Bot, msg: &Message) -> HandlerResult {
+pub async fn reload(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     let menu =  db::menu().await?;
-    let markup = markup(&menu).await?;
+    let markup = markup(user, &menu).await?;
     let text = "Main menu";
     crate::message::edit_message_text_or_send(bot, msg, &markup, text).await
 }
 ///
 /// Exits a MainMenu
-pub async fn exit(bot: &Bot, msg: &Message) -> HandlerResult {
+pub async fn exit(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     let text = "Bye";
     bot.edit_message_text(msg.chat.id, msg.id, text)
         // .edit_message_media(user_id, message_id, media)
@@ -80,15 +80,31 @@ pub async fn exit(bot: &Bot, msg: &Message) -> HandlerResult {
 }
 ///
 /// 
-async fn markup(menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(user: &User, menu: &IndexMap<String, MenuItem>) -> Result<InlineKeyboardMarkup, String> {
     // Create buttons for each group
-    let buttons: Vec<InlineKeyboardButton> = menu
-    .iter()
-    .map(|(_id, menu_item)| {
-        InlineKeyboardButton::callback(
-        menu_item.title.clone(),
-        menu_item.command.clone(),
-    )})
+    let buttons: Vec<InlineKeyboardButton> = menu.iter()
+        .filter(|(key, _menu_item)| {
+            match key.as_str() {
+                "Links" => {
+                    true
+                }
+                "Notice" => {
+                    user.has_role(&[UserRole::Member, UserRole::Member, UserRole::Admin])
+                }
+                "Subscribe" => {
+                    true
+                }
+                "Help" => {
+                    true
+                }
+                _ => false,
+            }
+        })
+        .map(|(_id, menu_item)| {
+            InlineKeyboardButton::callback(
+            menu_item.title.clone(),
+            menu_item.command.clone(),
+        )})
     .collect();
     // Separate into long and short
     let (long, mut short) : (Vec<_>, Vec<_>) = buttons

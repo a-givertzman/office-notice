@@ -57,6 +57,9 @@ async fn default_handler(upd: Arc<Update>) {
     }
 }
 ///
+/// 
+static BOT_NAME: &str = "TKZ Office Notice bot";
+///
 ///
 #[tokio::main]
 async fn main() {
