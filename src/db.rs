@@ -29,6 +29,7 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
             IndexMap::<String, User>::new()
         }
     };
+    let last_seen = last_seen.map_or("".to_owned(), |t| t.to_rfc3339());
     match users.get_mut(&user_id.to_string()) {
         Some(user) => {
             user.name = name.to_owned();

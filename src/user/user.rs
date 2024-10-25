@@ -1,4 +1,3 @@
-use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use crate::subscription::Subscription;
@@ -15,10 +14,58 @@ pub struct User {
     pub address: Option<String>,
     #[serde(default)]
     pub subscriptions: Vec<Subscription>,
-    #[serde(with = "last_seen")]
-    #[serde(skip_serializing)]
-    pub last_seen: Option<DateTime<chrono::Utc>>,
+    pub last_seen: String,
     pub role: Vec<UserRole>,
+}
+//
+//
+impl User {
+    ///
+    /// Returns User new instance
+    pub fn new(
+        id: ChatId,
+        name: String,
+        contact: Option<String>,
+        address: Option<String>,
+        subscriptions: Vec<Subscription>,
+        last_seen: String,
+        role: Vec<UserRole>,
+    ) -> Self {
+        Self { 
+            id,
+            name,
+            contact,
+            address,
+            subscriptions,
+            last_seen,
+            role,
+        }
+    }
+    ///
+    /// Returns true if `self.role` covers some of `role`
+    pub fn has_role(&self, roles: &[UserRole]) -> bool {
+        for role in &self.role {
+            if roles.contains(role) {
+                return true;
+            }
+        }
+        false
+    }
+}
+//
+//
+impl Default for User {
+    fn default() -> Self {
+        Self { 
+            id: panic!("User.default | field id must be defined"),
+            name: panic!("User.default | field id must be defined"),
+            contact: Default::default(),
+            address: Default::default(),
+            subscriptions: Default::default(),
+            last_seen: Default::default(),
+            role: vec![UserRole::Guest],
+        }
+    }
 }
 ///
 /// Parse chat_id from / to string
@@ -40,23 +87,29 @@ mod chat_id {
             .map_err(|err| de::Error::custom(format!("{:?}", err)))
     }
 }
-///
-/// Parse chat_id from / to string
-mod last_seen {
-    use chrono::{DateTime, Utc};
-    use serde::{de, Deserialize, Deserializer};
-    // pub fn serialize<S: Serializer>(v: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error> {
-    // //   let v = v.as_ref().and_then(|v| Some(v.two.clone()));
-    //     String::serialize(&v.0.to_string(), serializer)
-    // }
-    pub fn deserialize<'de, D: Deserializer<'de>, E: de::Error>(deserializer: D) -> Result<Option<DateTime<Utc>>, E> {
-        String::deserialize(deserializer)
-            .and_then(|str| {
-                match DateTime::parse_from_rfc3339(&str) {
-                    Ok(datetime) => Ok(Some(datetime.with_timezone(&Utc))),
-                    Err(err) => Err(de::Error::custom(format!("{:?}", err))),
-                }
-            })
-            .map_err(|err| de::Error::custom(format!("{:?}", err)))
-    }
-}
+// ///
+// /// Parse chat_id from / to string
+// mod last_seen {
+//     use chrono::{DateTime, Utc};
+//     use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+//     pub fn serialize<S: Serializer>(v: &str, serializer: S) -> Result<S::Ok, S::Error> {
+//     //   let v = v.as_ref().and_then(|v| Some(v.two.clone()));
+//         match v {
+//             Some(timestamp) => {
+//                 String::serialize(&timestamp.to_rfc3339(), serializer)
+//             },
+//             None => SerializeStruct::skip_field(&mut serializer, key).map_err(|err| ),
+//             // Err(S::Error::n "last_seen.serialize | Input is None"),
+//         }
+//     }
+//     pub fn deserialize<'de, D: Deserializer<'de>, E: de::Error>(deserializer: D) -> Result<Option<DateTime<Utc>>, E> {
+//         String::deserialize(deserializer)
+//             .and_then(|str| {
+//                 match DateTime::parse_from_rfc3339(&str) {
+//                     Ok(timestamp) => Ok(Some(timestamp.with_timezone(&Utc))),
+//                     Err(err) => Err(de::Error::custom(format!("{:?}", err))),
+//                 }
+//             })
+//             .map_err(|err| de::Error::custom(format!("{:?}", err)))
+//     }
+// }

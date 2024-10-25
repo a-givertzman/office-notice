@@ -1,11 +1,13 @@
 {
-  "posible-user-roles": ["admin", "moderator", "member", "guest"],
   "7038555815": {
     "id": "7038555815",
     "name": "Anton",
     "contact": "-",
     "address": null,
     "subscriptions": [],
-    "role": ["admin", "moderator"]
+    "last_seen": "2024-10-25T11:54:34.021896040+00:00",
+    "role": [
+      "Guest"
+    ]
   }
 }
