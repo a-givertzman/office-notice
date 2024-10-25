@@ -2,8 +2,7 @@ use std::time::Duration;
 use chrono::Utc;
 use derive_more::From;
 use indexmap::IndexMap;
-use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{ParseMode, User, UserId}
-};
+use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{User, UserId}};
 use tokio::time::sleep;
 use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
 use crate::loc::*;
@@ -239,23 +238,16 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
                     if main_state.prev_state.restarted {
                         let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
-                            // .reply_markup(main_menu_markup(0))
                             .await?;
                     } else {
                         // Process general commands without search if restarted (to prevent search submode commands)
                         let text =  loc(format!("Unknown command '{}'", cmd_raw));
                         bot.send_message(chat_id, text)
-                        // .reply_markup(main_menu_markup(0))
                         .await?;
-                        // crate::states::reload(bot, msg, dialogue, state).await?;
                     }
                     sleep(Duration::from_secs(2)).await;
                     dialogue.update(main_state.prev_state).await?;
                     crate::states::reload(bot.clone(), &msg, dialogue, main_state).await?
-                    // match crate::states::reload(bot.clone(), &msg, dialogue.clone(), state.prev_state).await {
-                    //     Ok(_) => todo!(),
-                    //     Err(_) => crate::states::exit(bot, &msg, dialogue, state).await?,
-                    // }
                 }
             };
         }

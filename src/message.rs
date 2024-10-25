@@ -35,8 +35,3 @@ pub async fn send_message_with_header(bot: &Bot, chat_id: impl Into<Recipient>, 
         .await?;
     Ok(())
 }
-///
-/// Covers with marckdown formating for `From Caption`
-pub fn fmt_from(input: &str) -> String {
-    format!("<b>{}:</b>", input)
-}
