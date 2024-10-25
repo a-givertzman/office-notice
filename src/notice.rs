@@ -81,14 +81,14 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
                 if let Some(group_id) = &group.id {
                     if let Err(err) = send_message_with_header(&bot, group_id.to_owned(), &fmt_from(&user.name), text).await {
                         // bot.send_message(group_id.to_owned(), format!("{}\n{}", fmt_from(&user.name), text)).parse_mode(ParseMode::MarkdownV2).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
+                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
                     };
                 }
                 for (_, receiver) in &group.members {
                     log::debug!("notice.notice | \t member '{}' ({})", receiver.name, receiver.id);
                     if let Err(err) = send_message_with_header(&bot, receiver.id, &fmt_from(&user.name), text).await {
                         // bot.send_message(receiver.id, format!("{}\n{}", fmt_from(&user.name), text)).await {
-                        log::debug!("notice.notice | Error sending message to the '{}' ({}): {:#?}", receiver.name, receiver.id, err);
+                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", receiver.name, receiver.id, err);
                     };
                 }
             } else {
