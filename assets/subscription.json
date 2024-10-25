@@ -7,7 +7,9 @@
         "name": "@Office-group-2",
         "contact": null,
         "address": null,
-        "subscriptions": []
+        "subscriptions": [],
+        "last_seen": "",
+        "role": []
       }
     }
   },
@@ -19,7 +21,20 @@
         "name": "@Office-group-1",
         "contact": null,
         "address": null,
-        "subscriptions": []
+        "subscriptions": [],
+        "last_seen": "",
+        "role": []
+      },
+      "7038555815": {
+        "id": "7038555815",
+        "name": "Anton",
+        "contact": "-",
+        "address": null,
+        "subscriptions": [],
+        "last_seen": "2024-10-25T13:42:17.458799478+00:00",
+        "role": [
+          "Sender"
+        ]
       }
     }
   },
@@ -36,7 +51,9 @@
         "name": "Anton",
         "contact": null,
         "address": null,
-        "subscriptions": []
+        "subscriptions": [],
+        "last_seen": "",
+        "role": []
       }
     }
   }
