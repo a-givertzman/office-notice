@@ -4,7 +4,7 @@ use derive_more::From;
 use indexmap::IndexMap;
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{User, UserId}};
 use tokio::time::sleep;
-use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, request_access::RequestAccessState, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
 use crate::loc::*;
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -15,9 +15,9 @@ pub enum State {
    Start(StartState),   // initial state
    Main(MainState),     // main menu state
    Links(LinksState),   // in Links menu
-   NoticeMenu(NoticeState),         // in Notice menu
-   Subscribe(SubscribeState),    // in Subscribe menu
-   Help(HelpState),
+   Notice(NoticeState),     // in Notice menu
+   Subscribe(SubscribeState),   // in Subscribe menu
+   Help(HelpState),                     // In the Halp menu
 //    GeneralMessage(MessageState), // general commands, enter text of message to send
 }
 //
@@ -64,7 +64,7 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             .branch(dptree::case![State::Start(state)].endpoint(start))
             .branch(dptree::case![State::Main(state)].endpoint(command))
             .branch(dptree::case![State::Links(state)].endpoint(command))
-            .branch(dptree::case![State::NoticeMenu(state)].endpoint(notice::notice))
+            .branch(dptree::case![State::Notice(state)].endpoint(notice::notice))
             .branch(dptree::case![State::Subscribe(state)].endpoint(command))
             // .branch(dptree::case![State::GeneralMessage(state)].endpoint(crate::general::update_input))
         )
@@ -200,6 +200,9 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             let user_id = main_state.user_id;
             log::debug!("states.command | State: {:?}", main_state);
             match cmd {
+                MainMenu::RequestAccess => {
+                    crate::request_access::enter(bot, msg, dialogue, RequestAccessState {prev_state: main_state, role: None, user_id}).await?;
+                }
                 MainMenu::Links(level) => {
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
                         crate::links::enter(bot, msg, dialogue, LinksState {prev_state: main_state, level, child: IndexMap::new(), user_id}).await?
@@ -257,7 +260,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             dialogue.update(links_state.prev_state).await?;
             crate::states::reload(bot.clone(), &msg, dialogue, links_state.prev_state).await?
         }
-        State::NoticeMenu(notice_state) => {
+        State::Notice(notice_state) => {
             // let user_id = notice_state.user_id;
             log::debug!("states.command | State: {:?}", notice_state);
             dialogue.update(notice_state.prev_state).await?;
@@ -314,6 +317,10 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             let cmd = MainMenu::parse(&input, 0);
             log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
+                MainMenu::RequestAccess => {
+                    let state = RequestAccessState { prev_state: state, user_id, ..Default::default() };
+                    crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                }
                 MainMenu::Links(level) => {
                     let state = LinksState {prev_state: state, level, child: IndexMap::new(), user_id };
                     crate::links::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
@@ -356,7 +363,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 LinksMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }
         }
-        State::NoticeMenu(state) => {
+        State::Notice(state) => {
             log::debug!("states.callback | Notice > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
             log::debug!("states.callback | Notice > Input: {}", input);

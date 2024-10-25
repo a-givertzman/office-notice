@@ -19,6 +19,7 @@ pub enum MainMenu {
    Links(String),      // Links menu
    Notice,     // Notice menu
    Subscribe,  // subscribe to receive notice
+   RequestAccess,   // User request access
    Help,
    Done,       // Exit menu
    Unknown,
@@ -31,6 +32,7 @@ impl MainMenu {
             "/notice" | "/Notice" => Self::Notice,
             "/links" | "/Links" => Self::Links(s.to_owned()),
             "/subscribe" | "/Subscribe" => Self::Subscribe,
+            "/requestaccess" | "/RequestAccess" => Self::RequestAccess,
             "/help" | "/Help" => Self::Help,
             "/done" | "/Done" => Self::Done,
             "/back" | "/Back" => Self::Done,
