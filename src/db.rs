@@ -10,6 +10,7 @@ pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
     let menu: IndexMap<String, MenuItem> = IndexMap::from([
         ("Links", "/Links"),
         ("Notice", "/Notice"),
+        ("RequestAccess", "/RequestAccess"),
         ("Subscribe", "/Subscribe"),
         ("Help", "/Help"),
     ])

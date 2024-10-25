@@ -85,6 +85,9 @@ async fn markup(user: &User, menu: &IndexMap<String, MenuItem>) -> Result<Inline
     let buttons: Vec<InlineKeyboardButton> = menu.iter()
         .filter(|(key, _menu_item)| {
             match key.as_str() {
+                "RequestAccess" => {
+                    user.has_role(&[UserRole::Guest])
+                }
                 "Links" => {
                     user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member])
                 }
