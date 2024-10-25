@@ -186,7 +186,6 @@ pub async fn links(user_id: UserId) -> Result<Links, String> {
         Err(err) => Err(format!("db.links | Error: {:#?}", err)),
     }
 }
-// }
 ///
 /// 
 fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
@@ -209,6 +208,3 @@ fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
     }
 
 }
-// ///
-// /// 
-// fn store<T: Serialize>(path: impl AsRef<Path>, value: T) -> Result<(), String> {
