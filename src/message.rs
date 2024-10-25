@@ -26,3 +26,8 @@ pub async fn edit_message_text_or_send(bot: &Bot, msg: &Message, markup: &Inline
         }
     }
 }
+///
+/// Covers with marckdown formating for `From Caption`
+pub fn fmt_from(input: &str) -> String {
+    format!("*{}*", input)
+}
