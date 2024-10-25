@@ -72,7 +72,6 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
         }
     };
     let user = db::user(&state.user_id.into()).await?;
-    // let user_name = msg.from.clone().map_or("-".to_owned(), |user| user.username.clone().unwrap_or("-".to_owned()));
     match msg.text() {
         Some(text) => {
             log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.user_id, text);
@@ -99,7 +98,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
-    // let state = state.prev_state;
+    let state = NoticeState { prev_state: state.prev_state, user_id: state.user_id,  ..Default::default() };
     dialogue.update(state.clone()).await?;
     crate::notice::enter(bot.to_owned(), msg.to_owned(), dialogue, state).await?;
     Ok(())
@@ -109,13 +108,8 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
 pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
     let _user_id = state.user_id;
     let markup = markup(&groups, is_message).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
-    // bot.edit_message_text(msg.chat.id, msg.id, text)
-    //     // .edit_message_media(user_id, message_id, media)
-    //     .reply_markup(markup)
-    //     .await
-    //     .map_err(|err| format!("inline::view {}", err))?;
-    // Ok(())
+    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await?;
+    Ok(())
 }
 ///
 /// 
