@@ -11,6 +11,28 @@
 | Moder | ✔ | ✔ | ✔ | ✔ | - |
 | Admin | ✔ | ✔ | ✔ | ✔ | ✔ |
 
+### For manual granting user access level:
+
+- User send /start to the bot
+- Admin open the file `assets/users.json`
+- Find user by UserName
+  - Add role to user
+  ```json
+    "0000000000": {
+      "id": "0000000000",
+      "name": "UserName",
+      "contact": "-",
+      "address": null,
+      "subscriptions": [],
+      "last_seen": "2024-10-25T14:40:51.891852847+00:00",
+      "role": [
+        - "Guest"
+        + "NewRole"
+      ]
+    }
+
+  ```
+
 ## 2. Run in Docker container
 
 To run the bot in container:
