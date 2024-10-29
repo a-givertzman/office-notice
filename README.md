@@ -1,4 +1,17 @@
-## Run in Docker container
+# Office notice
+
+## 1. Access roles
+
+
+| Role<br>name | Request<br>access | Subscribe,<br>Read | Send<br>Notice | Grant<br>Acces | Full<br>Access |
+| --        | :--:           | :--:      | :--:        | :--:        | :--:        |
+| Guest | ✔ | - | - | - | - |
+| Member | ✔ | ✔ | - | - | - |
+| Sender | ✔ | ✔ | ✔ | - | - |
+| Moder | ✔ | ✔ | ✔ | ✔ | - |
+| Admin | ✔ | ✔ | ✔ | ✔ | ✔ |
+
+## 2. Run in Docker container
 
 To run the bot in container:
 - Place a configuration file `config.yaml` of the following format in project root:
