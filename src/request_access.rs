@@ -73,6 +73,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
     match &state.role {
         // Moder granted a role
         Some(role) => {
+            log::debug!("request_access.enter | Moder granted a role: {:?}", role);
             let title = roles.get(&role.to_string()).map_or(role.to_string(), |role| role.title.clone());
             let text = format!("{}, role '{}' granted for you!", user_name, title);
             bot.send_message(user_id, text)
@@ -82,6 +83,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
         }
         // New user (state.user_id) requested access
         None => {
+            log::debug!("request_access.enter | User '{}' requested access...", user_name);
             let text = format!("Select a Role to be granted for user '{}'", user_name);
             let users = db::users(None::<&str>).await?;
             // Moderator avaliable in the DB

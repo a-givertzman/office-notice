@@ -322,14 +322,14 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
     match state {
         State::Start(_) => {}
         State::RequestAccess(state) => {
-            log::debug!("states.callback | Notice > state: {:#?}", state);
+            log::debug!("states.callback | RequestAccess > state: {:#?}", state);
             let input = q.data.to_owned().unwrap_or_default();
-            log::debug!("states.callback | Notice > Input: {}", input);
+            log::debug!("states.callback | RequestAccess > Input: {}", input);
             let cmd = RequestAccessMenu::parse(&input, 0);
-            log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
+            log::debug!("states.callback | RequestAccess > Cmd: {:?}", cmd);
             match cmd {
                 RequestAccessMenu::Role(role) => {
-                    log::debug!("states.callback | Notice > Notice Will send to the: '{:?}' group", role);
+                    log::debug!("states.callback | RequestAccess > Notice Will send to the: '{:?}' group", role);
                     let state = RequestAccessState {
                         prev_state: state.prev_state,
                         user: state.user,
@@ -338,7 +338,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 RequestAccessMenu::Unknown(text) => {
-                    log::debug!("states.callback | Notice > Unknown command received: '{}'", text);
+                    log::debug!("states.callback | RequestAccess > Unknown command received: '{}'", text);
                     crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 RequestAccessMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
@@ -351,7 +351,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
                 MainMenu::RequestAccess => {
-                    let state = RequestAccessState { prev_state: state, user: user, ..Default::default() };
+                    let state = RequestAccessState { prev_state: state, user: user, role: None };
                     crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Links(level) => {

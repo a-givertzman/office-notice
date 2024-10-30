@@ -25,7 +25,7 @@ where
     E: Debug,
 {
     fn handle_error(self: Arc<Self>, error: E) -> BoxFuture<'static, ()> {
-        let text = format!("main::handle_error: {:?}", error);
+        let text = format!("main::handle_error: {:#?}", error);
         log::error!("{}", text);
         let fut = async move {
             log::info!("main::Unable to send message to the service chat");
