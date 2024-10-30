@@ -1,9 +1,9 @@
-use std::{fs, path::Path};
+use std::{fs, path::{Path, PathBuf}};
 use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use teloxide::types::{ChatId, UserId};
-use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::{user::User, user_role::UserRole}};
+use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::{user::User, user_role::{UserRole, UserRoleDb, UserRoles}}};
 ///
 /// 
 pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
@@ -20,10 +20,10 @@ pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {
     Ok(menu)
 }
 ///
-/// 
+/// Inserts a user
 pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, address: Option<String>, last_seen: Option<DateTime<Utc>>, role: &[UserRole]) -> Result<(), String> {
     let path = "./assets/users.json";
-    let mut users = match users(path).await {
+    let mut users = match users(Some(path)).await {
         Ok(users) => users,
         Err(err) => {
             log::info!("db.user | error: {:#?}", err);
@@ -68,6 +68,44 @@ pub async fn user_insert(user_id: u64, name: String, contact: Option<String>, ad
     }
 }
 ///
+/// Updates or Inserts a user
+pub async fn user_update(user: User) -> Result<(), String> {
+    let path = "./assets/users.json";
+    let mut users = match users(Some(path)).await {
+        Ok(users) => users,
+        Err(err) => {
+            log::info!("db.user | error: {:#?}", err);
+            IndexMap::<String, User>::new()
+        }
+    };
+    let user_id = user.id.to_string();
+    let user_name = user.name.clone();
+    match users.get_mut(&user_id) {
+        Some(db_usr) => {
+            db_usr.update(user);
+        }
+        None => {
+            users.insert(
+                user.id.to_string(),
+                user,
+            );
+        }
+    };
+    match fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&path) {
+        Ok(f) => {
+            match serde_json::to_writer_pretty(f, &users) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(format!("db.user_insert | User '{}' ({}) - Error {:#?}", user_name, user_id, err)),
+            }
+        }
+        Err(err) => Err(format!("db.user_insert | Error: {:#?}", err)),
+    }
+}
+///
 /// Returns user from storage
 #[allow(unused)]
 pub async fn user(chat_id: &ChatId) -> Result<User, String> {
@@ -86,8 +124,12 @@ pub async fn user(chat_id: &ChatId) -> Result<User, String> {
 }
 ///
 /// Returns users from storage
-pub async fn users(path: impl AsRef<Path>) -> Result<IndexMap<String, User>, String> {
-    log::info!("db.users | load users from: {:?}", path.as_ref());
+pub async fn users(path: Option<impl AsRef<Path>>) -> Result<IndexMap<String, User>, String> {
+    let path: PathBuf = match path {
+        Some(path) => path.as_ref().to_owned(),
+        None => PathBuf::from("./assets/users.json"),
+    };
+    log::info!("db.users | load users from: {:?}", path);
     match load(path) {
         Ok(users) => {
             Ok(users)
@@ -188,6 +230,20 @@ pub async fn links(user_id: UserId) -> Result<Links, String> {
     }
 }
 ///
+/// Returns UserRoles
+pub async fn user_roles(user_id: ChatId) -> Result<UserRoles, String> {
+    let _ = user_id;
+    let path = "./assets/user-roles.json";
+    log::info!("db.user_roles | load roles from: {:?}", path);
+    match load(path) {
+        Ok(roles) => {
+            let roles: IndexMap<String, UserRoleDb> = roles;
+            Ok(roles)
+        }
+        Err(err) => Err(format!("db.user_roles | Error: {:#?}", err)),
+    }
+}
+///
 /// 
 fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
     match fs::read_to_string(&path) {
@@ -207,5 +263,4 @@ fn load<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, String> {
             Err(format!("db.load | File '{:?}' reading error: {:?}", path.as_ref(), err))
         }
     }
-
 }

@@ -4,7 +4,7 @@ use derive_more::From;
 use indexmap::IndexMap;
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{User, UserId}};
 use tokio::time::sleep;
-use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, request_access::RequestAccessState, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
+use crate::{db, help::HelpState, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::send_message_with_header, notice::{self, NoticeMenu, NoticeState}, request_access::{RequestAccessMenu, RequestAccessState}, subscribe::{SubscribeMenu, SubscribeState}, user::user_role::UserRole, BOT_NAME};
 use crate::loc::*;
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -17,6 +17,7 @@ pub enum State {
    Links(LinksState),   // in Links menu
    Notice(NoticeState),     // in Notice menu
    Subscribe(SubscribeState),   // in Subscribe menu
+   RequestAccess(RequestAccessState),    // in RequestAccess menu
    Help(HelpState),                     // In the Halp menu
 //    GeneralMessage(MessageState), // general commands, enter text of message to send
 }
@@ -201,7 +202,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             log::debug!("states.command | State: {:?}", main_state);
             match cmd {
                 MainMenu::RequestAccess => {
-                    crate::request_access::enter(bot, msg, dialogue, RequestAccessState {prev_state: main_state, role: None, user_id}).await?;
+                    crate::request_access::enter(bot, msg, dialogue, RequestAccessState {prev_state: main_state, role: None, user: user}).await?;
                 }
                 MainMenu::Links(level) => {
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
@@ -272,6 +273,13 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
             dialogue.update(subscribe_state.prev_state).await?;
             crate::states::reload(bot.clone(), &msg, dialogue, subscribe_state.prev_state).await?
         }
+        State::RequestAccess(request_access_state) => {
+            // let user_id = subscribe_state.user_id;
+            log::debug!("states.command | State: {:?}", request_access_state);
+            dialogue.update(request_access_state.prev_state).await?;
+            crate::states::reload(bot.clone(), &msg, dialogue, request_access_state.prev_state).await?
+        }
+
         State::Help(help_state) => {
             log::debug!("states.command | State: {:?}", help_state);
             dialogue.update(help_state.prev_state).await?;
@@ -305,12 +313,37 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
 /// Handles command callbacks
 pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: State) -> HandlerResult {
     let user_id = q.from.id;
+    let chat_id = ChatId::from(user_id);
+    let user = db::user(&chat_id).await?;
     let user_name = q.from.full_name();
     // Determine the language of the user
     let input = q.data.to_owned().unwrap_or_default();
     log::debug!("states.callback | State: {:?}, User {} ({}) Input: {}", state, user_name, user_id, input);
     match state {
         State::Start(_) => {}
+        State::RequestAccess(state) => {
+            log::debug!("states.callback | Notice > state: {:#?}", state);
+            let input = q.data.to_owned().unwrap_or_default();
+            log::debug!("states.callback | Notice > Input: {}", input);
+            let cmd = RequestAccessMenu::parse(&input, 0);
+            log::debug!("states.callback | Notice > Cmd: {:?}", cmd);
+            match cmd {
+                RequestAccessMenu::Role(role) => {
+                    log::debug!("states.callback | Notice > Notice Will send to the: '{:?}' group", role);
+                    let state = RequestAccessState {
+                        prev_state: state.prev_state,
+                        user: state.user,
+                        role: Some(role),
+                    };
+                    crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                }
+                RequestAccessMenu::Unknown(text) => {
+                    log::debug!("states.callback | Notice > Unknown command received: '{}'", text);
+                    crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                }
+                RequestAccessMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
+            }
+        }
         State::Main(state) => {
             let input = q.data.to_owned().unwrap_or_default();
             log::debug!("states.callback | Main > Input: {}", input);
@@ -318,7 +351,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("states.callback | Main > Cmd: {:?}", cmd);
             match cmd {
                 MainMenu::RequestAccess => {
-                    let state = RequestAccessState { prev_state: state, user_id, ..Default::default() };
+                    let state = RequestAccessState { prev_state: state, user: user, ..Default::default() };
                     crate::request_access::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Links(level) => {

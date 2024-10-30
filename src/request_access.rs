@@ -1,24 +1,35 @@
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, message::send_message_with_header, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions, user::user_role::UserRole};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode}};
+use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, user::{user::User, user_role::{UserRole, UserRoles}}};
 ///
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]
-pub enum NoticeMenu {
-   Group(String),   // Selected group to be noticed
+pub enum RequestAccessMenu {
+   Role(UserRole),    // Selected group to be granted
    Unknown(String), // Unknown command received
    Done,            // Exit menu
 }
 //
 //
-impl NoticeMenu {
+impl RequestAccessMenu {
    pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
         let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
         match input {
             ("/", "done" | "Done") => Self::Done,
             ("/", "back" | "Back") => Self::Done,
             ("/", "exit" | "Exit") => Self::Done,
-            ("/", input) => Self::Group(input.to_owned()),
+            ("/", input) => {
+                match serde_json::from_str(input) {
+                    Ok(role) => {
+                        let role: UserRole = role;
+                        Self::Role(role)
+                    }
+                    Err(err) => {
+                        log::error!("RequestAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
+                        Self::Unknown(s.to_owned())
+                    }
+                }
+            }
             (_, _) => Self::Unknown(s.to_owned()),
         }
    }
@@ -28,106 +39,92 @@ impl NoticeMenu {
 #[derive(Debug, Clone)]
 pub struct RequestAccessState {
     pub prev_state: MainState,      // Where to go on Back btn
-    pub user_id: UserId,            // User id doing request access
+    pub user: User,                 // User doing request access
     pub role: Option<UserRole>,     // Role to be granted
 }
 //
 //
 impl Default for RequestAccessState {
     fn default() -> Self {
-        Self { prev_state: MainState::default(), role: None, user_id: UserId(0) }
+        Self { 
+            prev_state: MainState::default(), 
+            role: None, 
+            user: User {
+                id: ChatId(0), 
+                name: "".to_owned(),
+                ..Default::default()
+            }
+        }
     }
 }
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestAccessState) -> HandlerResult {
-    log::debug!("notice.enter | state: {:#?}", state);
-    let groups =  match db::subscriptions().await {
-        Ok(groups) => groups,
+    let user_id = state.user.id;
+    let user_name = state.user.name.clone();
+    log::debug!("request_access.enter | state: {:#?}", state);
+    let roles =  match db::user_roles(user_id).await {
+        Ok(roles) => roles,
         Err(err) => {
-            log::warn!("notice.enter | Groups is empty, error: {:#?}", err);
+            log::warn!("request_access.enter | Error: {:#?}", err);
             IndexMap::new()
         }
     };
-    match state.role {
+    match &state.role {
+        // Moder granted a role
         Some(role) => {
-            let group_title = groups.get(&state.role).map_or(state.role.clone(), |group| group.title.clone());
-            let text = format!("Type a text for group '{}'", group_title);
-            dialogue.update(state.clone()).await?;
-            view(&bot, &msg, &state, &groups, text, Some(())).await?;
+            let title = roles.get(&role.to_string()).map_or(role.to_string(), |role| role.title.clone());
+            let text = format!("{}, role '{}' granted for you!", user_name, title);
+            bot.send_message(user_id, text)
+                // .edit_message_media(user_id, message_id, media)
+                .parse_mode(ParseMode::Html)
+                .await?;
         }
+        // New user (state.user_id) requested access
         None => {
-            let text = format!("Select group to notice");
+            let text = format!("Select a Role to be granted for user '{}'", user_name);
+            let users = db::users(None::<&str>).await?;
+            // Moderator avaliable in the DB
+            let moders: Vec<User> = users.into_iter().filter_map(|(_, user)| {
+                if user.role.contains(&UserRole::Moder) {
+                    Some(user)
+                } else {
+                    None
+                }
+            }).collect();
             dialogue.update(state.clone()).await?;
-            view(&bot, &msg, &state, &groups, text, None).await?;
+            view(&bot, &msg, &state, &roles, text, moders).await?;
         }
     }
     Ok(())
 }
 ///
-/// 
-pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestAccessState) -> HandlerResult {
-    let groups =  match db::subscriptions().await {
-        Ok(groups) => groups,
-        Err(err) => {
-            log::warn!("notice.notice | Groups is empty, error: {:#?}", err);
-            IndexMap::new()
+/// Menu buttons to select a role to be granted
+pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>) -> HandlerResult {
+    let _ = state.user.id;
+    match moders.first() {
+        Some(moder) => {
+            let markup = markup(&roles).await?;
+            bot.send_message(moder.id, text)
+                .reply_markup(markup)
+                .parse_mode(ParseMode::Html)
+                .await?;
+            Ok(())
         }
-    };
-    let user = db::user(&state.user_id.into()).await?;
-    match msg.text() {
-        Some(text) => {
-            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.user_id, text);
-            if let Some(group) = groups.get(&state.group) {
-                log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
-                if let Some(group_id) = &group.id {
-                    if let Err(err) = send_message_with_header(&bot, group_id.to_owned(), &user.name, text).await {
-                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", group.title, group_id, err);
-                    };
-                }
-                for (_, receiver) in &group.members {
-                    log::debug!("notice.notice | \t member '{}' ({})", receiver.name, receiver.id);
-                    if let Err(err) = send_message_with_header(&bot, receiver.id, &user.name, text).await {
-                        log::warn!("notice.notice | Error sending message to the '{}' ({}): {:#?}", receiver.name, receiver.id, err);
-                    };
-                }
-            } else {
-                log::warn!("notice.notice | Group '{}' not found in the subscriptions: {:#?}", state.group, groups);
-            }
-        }
-        None => {
-            bot.send_message(state.user_id, "Notice text can't be empty")
-                .await
-                .map_err(|err| format!("inline::view {}", err))?;
-        }
+        None => Err("()".into()),
     }
-    let state = RequestAccessState { prev_state: state.prev_state, user_id: state.user_id,  ..Default::default() };
-    dialogue.update(state.clone()).await?;
-    crate::notice::enter(bot.to_owned(), msg.to_owned(), dialogue, state).await?;
-    Ok(())
-}
-///
-/// Menu buttons to select a notice group
-pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
-    let _user_id = state.user_id;
-    let markup = markup(&groups, is_message).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await?;
-    Ok(())
 }
 ///
 /// 
-async fn markup(groups: &Subscriptions, is_message: Option<()>) -> Result<InlineKeyboardMarkup, String> {
-    let mut buttons: Vec<InlineKeyboardButton> = match is_message {
-        Some(_) => vec![],
-        None => groups
-            .iter()
-            .map(|(group_id, group)| {
-                InlineKeyboardButton::callback(
-                    group.title.clone(),
-                    format!("/{}", group_id),
-            )})
-            .collect(),
-    };
+async fn markup(roles: &UserRoles) -> Result<InlineKeyboardMarkup, String> {
+    let mut buttons: Vec<InlineKeyboardButton> = roles
+        .iter()
+        .map(|(role_id, role)| {
+            InlineKeyboardButton::callback(
+                role.title.clone(),
+                format!("/{}", role_id),
+        )})
+        .collect();
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
         format!("/back")

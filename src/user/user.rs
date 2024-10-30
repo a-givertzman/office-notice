@@ -42,6 +42,18 @@ impl User {
         }
     }
     ///
+    /// 
+    pub fn update(&mut self, other: Self) -> Result<(), String> {
+        self.id = other.id;
+        self.name = other.name;
+        self.contact = other.contact;
+        self.address = other.address;
+        self.subscriptions = other.subscriptions;
+        self.last_seen = other.last_seen;
+        self.role = other.role;
+        Ok(())
+    }
+    ///
     /// Returns true if `self.role` covers some of `role`
     pub fn has_role(&self, roles: &[UserRole]) -> bool {
         for role in &self.role {
