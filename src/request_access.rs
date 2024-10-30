@@ -95,14 +95,14 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
                 }
             }).collect();
             dialogue.update(state.clone()).await?;
-            view(&bot, &msg, &state, &roles, text, moders).await?;
+            view(&bot, &msg, &state, &roles, text, moders, &user_name).await?;
         }
     }
     Ok(())
 }
 ///
 /// Menu buttons to select a role to be granted
-pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>, user_name: &str) -> HandlerResult {
     let _ = state.user.id;
     match moders.first() {
         Some(moder) => {
@@ -113,7 +113,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, roles: &
                 .await?;
             Ok(())
         }
-        None => Err("()".into()),
+        None => Err(format!("request_access.enter | No moderators found to grant access for User '{}'", user_name).into()),
     }
 }
 ///
