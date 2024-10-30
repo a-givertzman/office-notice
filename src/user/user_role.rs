@@ -13,7 +13,7 @@ pub enum UserRole {
     Moder,
     ///
     /// Sender role, Can send Notice's
-    #[serde(alias = "Member", alias = "member")]
+    #[serde(alias = "Sender", alias = "sender")]
     Sender,
     ///
     /// Member role, Can Subscribe and receive Notice's
