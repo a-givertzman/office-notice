@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, message::send_message_with_header, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, message::send_message_with_header, states::{MainState, MyDialogue}, subscription::Subscriptions};
 ///
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]
@@ -29,13 +29,13 @@ impl NoticeMenu {
 pub struct NoticeState {
     pub prev_state: MainState,  // Where to go on Back btn
     pub group: String,          // Group id to be noticed
-    pub user_id: UserId,        // User id doing notice
+    pub chat_id: ChatId,        // User id doing notice
 }
 //
 //
 impl Default for NoticeState {
     fn default() -> Self {
-        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0) }
+        Self { prev_state: MainState::default(), group: String::new(), chat_id: ChatId(0) }
     }
 }
 ///
@@ -71,10 +71,10 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
             IndexMap::new()
         }
     };
-    let user = db::user(&state.user_id.into()).await?;
+    let user = db::user(&state.chat_id.into()).await?;
     match msg.text() {
         Some(text) => {
-            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.user_id, text);
+            log::debug!("notice.notice | Sending notice from '{}' ({}): '{:?}'", user.name, state.chat_id, text);
             if let Some(group) = groups.get(&state.group) {
                 log::debug!("notice.notice | Sending notice to the '{}' group...", group.title);
                 if let Some(group_id) = &group.id {
@@ -93,12 +93,12 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
             }
         }
         None => {
-            bot.send_message(state.user_id, "Notice text can't be empty")
+            bot.send_message(state.chat_id, "Notice text can't be empty")
                 .await
                 .map_err(|err| format!("inline::view {}", err))?;
         }
     }
-    let state = NoticeState { prev_state: state.prev_state, user_id: state.user_id,  ..Default::default() };
+    let state = NoticeState { prev_state: state.prev_state, chat_id: state.chat_id,  ..Default::default() };
     dialogue.update(state.clone()).await?;
     crate::notice::enter(bot.to_owned(), msg.to_owned(), dialogue, state).await?;
     Ok(())
@@ -106,7 +106,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
 ///
 /// Menu buttons to select a notice group
 pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
-    let _user_id = state.user_id;
+    let _user_id = state.chat_id;
     let markup = markup(&groups, is_message).await?;
     crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await?;
     Ok(())

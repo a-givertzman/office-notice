@@ -1,17 +1,18 @@
 use indexmap::IndexMap;
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode}};
-use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, user::{user::User, user_role::{UserRole, UserRoles}}};
+use teloxide::{payloads::SendMessageSetters, prelude::Requester, types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode}, Bot};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue, State}};
+use super::{user::User, user_role::{UserRole, UserRoles}};
 ///
-/// Notice menu
+/// RequestAccess menu
 #[derive(Debug, Clone, PartialEq)]
-pub enum RequestAccessMenu {
-   Role(UserRole),    // Selected group to be granted
-   Unknown(String), // Unknown command received
-   Done,            // Exit menu
+pub enum GrantAccessMenu {
+   Role(UserRole),      // Selected role to be granted
+   Unknown(String),     // Unknown command received
+   Done,                // Exit menu
 }
 //
 //
-impl RequestAccessMenu {
+impl GrantAccessMenu {
    pub fn parse(s: &str, _loc_tag: LocaleTag) -> Self {
         let input = s.strip_prefix('/').map_or_else(|| ("", s), |input| ("/", input));
         match input {
@@ -25,7 +26,7 @@ impl RequestAccessMenu {
                         Self::Role(role)
                     }
                     Err(err) => {
-                        log::error!("RequestAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
+                        log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
                         Self::Unknown(s.to_owned())
                     }
                 }
@@ -35,16 +36,16 @@ impl RequestAccessMenu {
    }
 }
 ///
-/// State holding values rquired for request access process
+/// State holding values rquired for grant access process
 #[derive(Debug, Clone)]
-pub struct RequestAccessState {
-    pub prev_state: MainState,      // Where to go on Back btn
+pub struct GrantAccessState {
+    pub prev_state: MainState,     // Where to go on Back btn
     pub user: User,                 // User doing request access
     pub role: Option<UserRole>,     // Role to be granted
 }
 //
 //
-impl Default for RequestAccessState {
+impl Default for GrantAccessState {
     fn default() -> Self {
         Self { 
             prev_state: MainState::default(), 
@@ -52,14 +53,28 @@ impl Default for RequestAccessState {
             user: User {
                 id: ChatId(0), 
                 name: "".to_owned(),
-                ..Default::default()
+                contact: None,
+                address: None,
+                subscriptions: vec![],
+                last_seen: "".to_owned(),
+                role: vec![],
             }
+        }
+    }
+}
+//
+//
+impl From<State> for GrantAccessState {
+    fn from(value: State) -> Self {
+        match value {
+            State::GrantAccess(state) => state,
+            _ => panic!("GrantAccessState.try_from | Illegal input state '{:?}'", value)
         }
     }
 }
 ///
 ///  
-pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestAccessState) -> HandlerResult {
+pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAccessState) -> HandlerResult {
     let user_id = state.user.id;
     let user_name = state.user.name.clone();
     log::debug!("request_access.enter | state: {:#?}", state);
@@ -102,7 +117,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
 }
 ///
 /// Menu buttons to select a role to be granted
-pub async fn view(bot: &Bot, msg: &Message, state: &RequestAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>, user_name: &str) -> HandlerResult {
+pub async fn view(bot: &Bot, msg: &Message, state: &GrantAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>, user_name: &str) -> HandlerResult {
     let _ = state.user.id;
     match moders.first() {
         Some(moder) => {
@@ -136,3 +151,36 @@ async fn markup(roles: &UserRoles) -> Result<InlineKeyboardMarkup, String> {
     .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
     Ok(markup)
 }
+
+    // fn get_state(state: State, user: crate::user::user::User, chat_id: ChatId, role: UserRole) -> RequestAccessState {
+    //     match state {
+    //         State::Start(state) => RequestAccessState {
+    //             prev_state: MainState { prev_state: state, chat_id },
+    //             user: user,
+    //             role: Some(role),
+    //         },
+    //         State::Main(state) => RequestAccessState {
+    //             prev_state: state,
+    //             user: user,
+    //             role: Some(role),
+    //         },
+    //         State::Links(state) => RequestAccessState {
+    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
+    //             user: user,
+    //             role: Some(role),
+    //         },
+    //         State::Notice(state) => RequestAccessState {
+    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
+    //             user: user,
+    //             role: Some(role),
+    //         },
+    //         State::Subscribe(state) => RequestAccessState {
+    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
+    //             user: user,
+    //             role: Some(role),
+    //         },
+    //         State::RequestAccess(state) => state,
+    //         State::GrantAccess(state) => 
+    //         State::Help(state) => todo!(),
+    //     }
+    // }

@@ -66,19 +66,19 @@ impl User {
 }
 //
 //
-impl Default for User {
-    fn default() -> Self {
-        Self { 
-            id: panic!("User.default | field id must be defined"),
-            name: panic!("User.default | field id must be defined"),
-            contact: Default::default(),
-            address: Default::default(),
-            subscriptions: Default::default(),
-            last_seen: Default::default(),
-            role: vec![UserRole::Guest],
-        }
-    }
-}
+// impl Default for User {
+//     fn default() -> Self {
+//         Self { 
+//             id: panic!("User.default | field id must be defined"),
+//             name: panic!("User.default | field id must be defined"),
+//             contact: Default::default(),
+//             address: Default::default(),
+//             subscriptions: Default::default(),
+//             last_seen: Default::default(),
+//             role: vec![UserRole::Guest],
+//         }
+//     }
+// }
 ///
 /// Parse chat_id from / to string
 mod chat_id {

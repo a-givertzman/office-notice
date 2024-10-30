@@ -10,7 +10,7 @@ mod db;
 mod user;
 mod states;
 mod help;
-mod request_access;
+mod kernel;
 //
 use std::{env, fmt::Debug, process::Command, sync::Arc};
 use futures::future::BoxFuture;

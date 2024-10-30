@@ -2,7 +2,7 @@ use std::{fs, path::{Path, PathBuf}};
 use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
-use teloxide::types::{ChatId, UserId};
+use teloxide::types::ChatId;
 use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::{user::User, user_role::{UserRole, UserRoleDb, UserRoles}}};
 ///
 /// 
@@ -217,7 +217,7 @@ pub async fn subscriptions() -> Result<Subscriptions, String> {
 }
 ///
 /// Returns Links
-pub async fn links(user_id: UserId) -> Result<Links, String> {
+pub async fn links(user_id: ChatId) -> Result<Links, String> {
     let _ = user_id;
     let path = "./assets/links.json";
     log::info!("db.links | load links from: {:?}", path);

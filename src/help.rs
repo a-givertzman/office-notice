@@ -1,11 +1,11 @@
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
-use crate::{loc::loc, states::{HandlerResult, MainState, MyDialogue}};
+use crate::{kernel::error::HandlerResult, loc::loc, states::{MainState, MyDialogue}, user::user::User};
 ///
 /// 
 #[derive(Debug, Clone)]
 pub struct HelpState {
     pub prev_state: MainState,  // Where to go on Back btn
-    // pub user_id: UserId,        // User id doing notice
+    pub user: User,        // User id doing notice
 }
 ///
 /// 

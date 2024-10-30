@@ -1,5 +1,5 @@
 use teloxide::{payloads::{EditMessageTextSetters, SendMessageSetters}, prelude::Requester, types::{InlineKeyboardMarkup, Message, ParseMode, Recipient}, Bot};
-use crate::states::HandlerResult;
+use crate::kernel::error::HandlerResult;
 ///
 /// Edit current message if possible or sending new one
 pub async fn edit_message_text_or_send(bot: &Bot, msg: &Message, markup: &InlineKeyboardMarkup, text: &str) -> HandlerResult {
