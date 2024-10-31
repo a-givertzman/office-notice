@@ -20,13 +20,14 @@ impl GrantAccessMenu {
             ("/", "back" | "Back") => Self::Done,
             ("/", "exit" | "Exit") => Self::Done,
             ("/", input) => {
-                match serde_json::from_str(input) {
-                    Ok(role) => {
-                        let role: UserRole = role;
-                        Self::Role(role)
-                    }
-                    Err(_err) => {
-                        // log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
+                match input.to_lowercase().as_str() {
+                    "GrantRole/Admin" | "grantrole/admin" | "Admin" | "admin" => Self::Role(UserRole::Admin),
+                    "GrantRole/Moder" | "grantrole/moder" | "Moder" | "moder" => Self::Role(UserRole::Moder),
+                    "GrantRole/Sender" | "grantrole/sender" | "Sender" | "sender" => Self::Role(UserRole::Sender),
+                    "GrantRole/Member" | "grantrole/member" | "Member" | "member" => Self::Role(UserRole::Member),
+                    "GrantRole/Guest" | "grantrole/guest" | "Guest" | "guest" => Self::Role(UserRole::Guest),
+                    _ => {
+                        log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}'", input);
                         Self::Unknown(s.to_owned())
                     }
                 }
@@ -109,27 +110,28 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAcc
                     None
                 }
             }).collect();
-            dialogue.update(state.clone()).await?;
-            view(&bot, &msg, &state, &roles, text, moders, &user_name).await?;
+            match moders.first() {
+                Some(moder) => {
+                    // dialogue.update(state.clone()).await?;
+                    view(&bot, &state, &roles, text, moder).await?;
+                }
+                None => return Err(format!("request_access.enter | No moderators found to grant access for User '{}'", user_name).into()),
+            }
+        
         }
     }
     Ok(())
 }
 ///
 /// Menu buttons to select a role to be granted
-pub async fn view(bot: &Bot, msg: &Message, state: &GrantAccessState, roles: &UserRoles, text: impl Into<String>, moders: Vec<User>, user_name: &str) -> HandlerResult {
+pub async fn view(bot: &Bot, state: &GrantAccessState, roles: &UserRoles, text: impl Into<String>, moder: &User) -> HandlerResult {
     let _ = state.user.id;
-    match moders.first() {
-        Some(moder) => {
-            let markup = markup(&roles).await?;
-            bot.send_message(moder.id, text)
-                .reply_markup(markup)
-                .parse_mode(ParseMode::Html)
-                .await?;
-            Ok(())
-        }
-        None => Err(format!("request_access.enter | No moderators found to grant access for User '{}'", user_name).into()),
-    }
+    let markup = markup(&roles).await?;
+    bot.send_message(moder.id, text)
+        .reply_markup(markup)
+        .parse_mode(ParseMode::Html)
+        .await?;
+    Ok(())
 }
 ///
 /// 
@@ -151,36 +153,3 @@ async fn markup(roles: &UserRoles) -> Result<InlineKeyboardMarkup, String> {
     .fold(InlineKeyboardMarkup::default(), |acc, item| acc.append_row(vec![item]));
     Ok(markup)
 }
-
-    // fn get_state(state: State, user: crate::user::user::User, chat_id: ChatId, role: UserRole) -> RequestAccessState {
-    //     match state {
-    //         State::Start(state) => RequestAccessState {
-    //             prev_state: MainState { prev_state: state, chat_id },
-    //             user: user,
-    //             role: Some(role),
-    //         },
-    //         State::Main(state) => RequestAccessState {
-    //             prev_state: state,
-    //             user: user,
-    //             role: Some(role),
-    //         },
-    //         State::Links(state) => RequestAccessState {
-    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
-    //             user: user,
-    //             role: Some(role),
-    //         },
-    //         State::Notice(state) => RequestAccessState {
-    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
-    //             user: user,
-    //             role: Some(role),
-    //         },
-    //         State::Subscribe(state) => RequestAccessState {
-    //             prev_state: MainState { prev_state: StartState::default(), chat_id },
-    //             user: user,
-    //             role: Some(role),
-    //         },
-    //         State::RequestAccess(state) => state,
-    //         State::GrantAccess(state) => 
-    //         State::Help(state) => todo!(),
-    //     }
-    // }

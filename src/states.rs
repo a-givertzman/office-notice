@@ -350,7 +350,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                     crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
                 }
                 _ => {
-                    log::debug!("{}.callback | Grant role Invalid state '{:?}'", dbgid, state);
+                    log::warn!("{}.callback | Grant role Invalid state '{:?}'", dbgid, state);
                 }
             }
         }
@@ -362,10 +362,13 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 },
                 _ => "-".to_owned(),
             };
+            log::debug!("{}.callback | Grant role canceled for user {}", dbgid, granted_user);
             let text = format!("Canceled role granting for user '{}'", granted_user);
             edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
         }
-        GrantAccessMenu::Unknown(_) => {}
+        GrantAccessMenu::Unknown(cmd) => {
+            log::debug!("{}.callback | Grant role Unknown cmd: {}", dbgid, cmd);
+        }
     }
     match state {
         State::Start(state) => {

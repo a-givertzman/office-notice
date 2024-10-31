@@ -1,5 +1,5 @@
 use teloxide::prelude::*;
-use crate::{kernel::error::HandlerResult, message::edit_text_message_or_send, states::{MainState, MyDialogue}, user::{grant_access::{self, GrantAccessState}, user::User}};
+use crate::{kernel::error::HandlerResult, message::edit_text_message_or_send, states::{MainState, MyDialogue, StartState}, user::{grant_access::{self, GrantAccessState}, user::User}};
 // ///
 // /// RequestAccess menu
 // #[derive(Debug, Clone, PartialEq)]
@@ -67,10 +67,10 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
     let user_name = state.user.name.clone();
     log::debug!("request_access.enter | state: {:#?}", state);
     log::debug!("request_access.enter | User '{}' requested access...", user_name);
-    let state = GrantAccessState { prev_state: MainState::default(), user: state.user, role: None };
-    dialogue.update(state.prev_state).await?;
+    dialogue.update(StartState::default()).await?;
     let text = format!("{}, Access requested", user_name);
     edit_text_message_or_send(&bot, &msg, &text).await?;
+    let state = GrantAccessState { prev_state: MainState::default(), user: state.user, role: None };
     grant_access::enter(bot, msg, dialogue, state).await?;
     Ok(())
 }
