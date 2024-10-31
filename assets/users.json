@@ -5,31 +5,9 @@
     "contact": "-",
     "address": null,
     "subscriptions": [],
-    "last_seen": "2024-10-31T15:22:27.443496588+00:00",
+    "last_seen": "2024-10-31T16:14:15.019124903+00:00",
     "role": [
-      "Guest"
-    ]
-  },
-  "193094409": {
-    "id": "193094409",
-    "name": "Konstantin Trushov",
-    "contact": "minyewoo",
-    "address": null,
-    "subscriptions": [],
-    "last_seen": "2024-10-30T13:47:31.968175201+00:00",
-    "role": [
-      "Guest"
-    ]
-  },
-  "7110065164": {
-    "id": "7110065164",
-    "name": "Anton Lobanov",
-    "contact": "anton_cort",
-    "address": null,
-    "subscriptions": [],
-    "last_seen": "2024-10-30T18:48:40.511133867+00:00",
-    "role": [
-      "Moder"
+      "Member"
     ]
   }
 }

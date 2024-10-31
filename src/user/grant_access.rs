@@ -65,7 +65,7 @@ impl GrantAccessMenu {
 #[derive(Debug, Clone)]
 pub struct GrantAccessState {
     /// Where to go on Back btn
-    pub prev_state: StartState,
+    pub prev_state: Box<State>,
     /// User doing request access
     pub user: User,
     /// Role to be granted
@@ -76,7 +76,7 @@ pub struct GrantAccessState {
 impl Default for GrantAccessState {
     fn default() -> Self {
         Self { 
-            prev_state: StartState::default(), 
+            prev_state: Box::new(State::Start(StartState::default())), 
             role: None, 
             user: User {
                 id: ChatId(0), 
@@ -122,7 +122,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAcc
             db::user_update(to_user).await?;
             let title = roles.get(&role.to_string()).map_or(role.to_string(), |role| role.title.clone());
             let text = format!("{}, role '{}' granted for you!", user_name, title);
-            dialogue.update(state.prev_state).await?;
+            dialogue.update(*state.prev_state).await?;
             bot.send_message(user_id, text)
                 // .edit_message_media(user_id, message_id, media)
                 .parse_mode(ParseMode::Html)

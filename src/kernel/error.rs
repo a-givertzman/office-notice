@@ -6,7 +6,7 @@ pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 ///
 /// Error container
 #[derive(Debug)]
-pub struct StrError(String);
+pub struct StrError(pub String);
 // Error doesn't require you to implement any methods, but
 // your type must also implement Debug and Display.
 impl std::error::Error for StrError {}

@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::User};
 use tokio::time::sleep;
 use crate::{
-    db, help::HelpState, kernel::error::HandlerResult, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::{
+    db, help::HelpState, kernel::error::{HandlerResult, StrError}, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::{
         grant_access::{GrantAccessMenu, GrantAccessState}, request_access::RequestAccessState, user_role::UserRole
     }, BOT_NAME
 };
@@ -335,27 +335,33 @@ async fn grant_access(dbgid: &str, bot: &Bot, q: &CallbackQuery, dialogue: &MyDi
     match GrantAccessMenu::parse(&input, 0) {
         GrantAccessMenu::Role((role, chat_id)) => {
             let to_user = db::user(&chat_id).await?;
+            let text = format!("Selected role '{:?}' for user '{}'", role, to_user.name);
+            edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
             log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, role, to_user.name);
-            let state = GrantAccessState { prev_state: StartState::default(), user: to_user, role: Some(role) };
+            let state = GrantAccessState { prev_state: Box::new(state.to_owned()), user: to_user, role: Some(role) };
             crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?;
+            Ok(())
         }
         GrantAccessMenu::Done => {
             let granted_user = match &state {
                 State::GrantAccess(ga_state) => {
-                    dialogue.update(ga_state.prev_state).await?;
+                    dialogue.update(*ga_state.prev_state.clone()).await?;
                     ga_state.user.name.clone()
                 },
                 _ => "-".to_owned(),
             };
-            log::debug!("{}.callback | Grant role canceled for user {}", dbgid, granted_user);
+            let info = format!("{}.callback | Grant role canceled for user {}", dbgid, granted_user);
+            log::info!("{}", info);
             let text = format!("Canceled role granting for user '{}'", granted_user);
             edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
+            Err(StrError(info).into())
         }
         GrantAccessMenu::Unknown(cmd) => {
-            log::debug!("{}.callback | Grant role Unknown cmd: {}", dbgid, cmd);
+            let info = format!("{}.callback | Grant role Unknown cmd: {}", dbgid, cmd);
+            log::debug!("{}", info);
+            Err(StrError(info).into())
         }
     }
-    Ok(())
 }
 ///
 /// Handles command callbacks
@@ -381,20 +387,8 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         }
         State::GrantAccess(state) => {
             log::debug!("{}.callback | State::GrantAccess > state: {:#?}", dbgid, state);
-            grant_access(dbgid, &bot, &q, &dialogue, &State::GrantAccess(state), &input).await?
-            // log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, state.role, state.user.name);
-            // match GrantAccessMenu::parse(&input, 0) {
-            //     GrantAccessMenu::Role((role, chat_id)) => {
-            //         let state = GrantAccessState { prev_state: state.prev_state, user: state.user.clone(), role: Some(role) };
-            //         crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
-            //     }
-            //     GrantAccessMenu::Done => {
-            //         let text = format!("Canceled role granting for user '{}'", state.user.name);
-            //         dialogue.update(state.prev_state).await?;
-            //         edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
-            //     }
-            //     GrantAccessMenu::Unknown(_) => {}
-            // }
+            grant_access(dbgid, &bot, &q, &dialogue, &State::GrantAccess(state), &input).await?;
+            return Ok(());
         }
         State::Main(state) => {
             let input = q.data.to_owned().unwrap_or_default();
