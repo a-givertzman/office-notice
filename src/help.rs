@@ -24,7 +24,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: HelpStat
 pub async fn view(bot: &Bot, msg: &Message, text: impl Into<String>) -> HandlerResult {
     let text = text.into();
     let markup = markup().await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text).await
 }
 ///
 /// 

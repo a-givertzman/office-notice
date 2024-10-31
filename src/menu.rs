@@ -68,7 +68,7 @@ pub async fn reload(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     let menu =  db::menu().await?;
     let markup = markup(user, &menu).await?;
     let text = "Main menu";
-    crate::message::edit_message_text_or_send(bot, msg, &markup, text).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, text).await
 }
 ///
 /// Exits a MainMenu

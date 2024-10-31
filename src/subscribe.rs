@@ -96,7 +96,7 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
 pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
     let user_id = state.chat_id;
     let markup = markup(&groups, user_id).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text.into()).await
     // bot.edit_message_text(msg.chat.id, msg.id, text)
     //     // .edit_message_media(user_id, message_id, media)
     //     .reply_markup(markup)

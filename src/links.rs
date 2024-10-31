@@ -69,7 +69,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: LinksState, links: Links) -> 
     let user_id = state.chat_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text).await
     // bot.edit_message_text(msg.chat.id, msg.id, text)
     //     // .edit_message_media(user_id, message_id, media)
     //     .reply_markup(markup)

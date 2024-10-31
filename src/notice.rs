@@ -108,7 +108,7 @@ pub async fn notice(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeS
 pub async fn view(bot: &Bot, msg: &Message, state: &NoticeState, groups: &Subscriptions, text: impl Into<String>, is_message: Option<()>) -> HandlerResult {
     let _user_id = state.chat_id;
     let markup = markup(&groups, is_message).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await?;
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text.into()).await?;
     Ok(())
 }
 ///
