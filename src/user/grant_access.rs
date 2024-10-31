@@ -1,12 +1,12 @@
 use indexmap::IndexMap;
 use teloxide::{payloads::SendMessageSetters, prelude::Requester, types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode}, Bot};
-use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue, State}};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue, StartState, State}};
 use super::{user::User, user_role::{UserRole, UserRoles}};
 ///
 /// RequestAccess menu
 #[derive(Debug, Clone, PartialEq)]
 pub enum GrantAccessMenu {
-   Role(UserRole),      // Selected role to be granted
+   Role((UserRole, ChatId)),      // Selected Role to be granted to User
    Unknown(String),     // Unknown command received
    Done,                // Exit menu
 }
@@ -20,14 +20,38 @@ impl GrantAccessMenu {
             ("/", "back" | "Back") => Self::Done,
             ("/", "exit" | "Exit") => Self::Done,
             ("/", input) => {
-                match input.to_lowercase().as_str() {
-                    "GrantRole/Admin" | "grantrole/admin" | "Admin" | "admin" => Self::Role(UserRole::Admin),
-                    "GrantRole/Moder" | "grantrole/moder" | "Moder" | "moder" => Self::Role(UserRole::Moder),
-                    "GrantRole/Sender" | "grantrole/sender" | "Sender" | "sender" => Self::Role(UserRole::Sender),
-                    "GrantRole/Member" | "grantrole/member" | "Member" | "member" => Self::Role(UserRole::Member),
-                    "GrantRole/Guest" | "grantrole/guest" | "Guest" | "guest" => Self::Role(UserRole::Guest),
-                    _ => {
-                        log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}'", input);
+                let mut input = input.split(":");
+                match input.next() {
+                    Some(role) => match input.next() {
+                        Some(user_id) => {
+                            match user_id.parse() {
+                                Ok(user_id) => {
+                                    // let user_id = user_id;
+                                    match role.to_lowercase().as_str() {
+                                        "GrantRole/Admin"  | "grantrole/admin"  | "Admin"  | "admin" => Self::Role((UserRole::Admin, ChatId(user_id))),
+                                        "GrantRole/Moder"  | "grantrole/moder"  | "Moder"  | "moder" => Self::Role((UserRole::Moder, ChatId(user_id))),
+                                        "GrantRole/Sender" | "grantrole/sender" | "Sender" | "sender" => Self::Role((UserRole::Sender, ChatId(user_id))),
+                                        "GrantRole/Member" | "grantrole/member" | "Member" | "member" => Self::Role((UserRole::Member, ChatId(user_id))),
+                                        "GrantRole/Guest"  | "grantrole/guest"  | "Guest"  | "guest" => Self::Role((UserRole::Guest, ChatId(user_id))),
+                                        _ => {
+                                            log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}'", input);
+                                            Self::Unknown(s.to_owned())
+                                        }
+                                    }
+                                },
+                                Err(err) => {
+                                    log::error!("GrantAccessMenu.parse | User Id '{}' parse error: '{:?}'", user_id, err);
+                                    Self::Unknown(s.to_owned())
+                                }
+                            }
+                        },
+                        None => {
+                            log::error!("GrantAccessMenu.parse | User Id not found in '{:?}'", input);
+                            Self::Unknown(s.to_owned())
+                        }
+                    },
+                    None => {
+                        log::error!("GrantAccessMenu.parse | Role not found in '{:?}'", input);
                         Self::Unknown(s.to_owned())
                     }
                 }
@@ -40,16 +64,19 @@ impl GrantAccessMenu {
 /// State holding values rquired for grant access process
 #[derive(Debug, Clone)]
 pub struct GrantAccessState {
-    pub prev_state: MainState,     // Where to go on Back btn
-    pub user: User,                 // User doing request access
-    pub role: Option<UserRole>,     // Role to be granted
+    /// Where to go on Back btn
+    pub prev_state: StartState,
+    /// User doing request access
+    pub user: User,
+    /// Role to be granted
+    pub role: Option<UserRole>,
 }
 //
 //
 impl Default for GrantAccessState {
     fn default() -> Self {
         Self { 
-            prev_state: MainState::default(), 
+            prev_state: StartState::default(), 
             role: None, 
             user: User {
                 id: ChatId(0), 
@@ -89,9 +116,13 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAcc
     match &state.role {
         // Moder granted a role
         Some(role) => {
-            log::debug!("request_access.enter | Moder granted a role: {:?}", role);
+            log::debug!("request_access.enter | Moder granting a role: {:?}...", role);
+            let mut to_user = state.user;
+            to_user.add_role(role.to_owned());
+            db::user_update(to_user).await?;
             let title = roles.get(&role.to_string()).map_or(role.to_string(), |role| role.title.clone());
             let text = format!("{}, role '{}' granted for you!", user_name, title);
+            dialogue.update(state.prev_state).await?;
             bot.send_message(user_id, text)
                 // .edit_message_media(user_id, message_id, media)
                 .parse_mode(ParseMode::Html)
@@ -126,7 +157,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAcc
 /// Menu buttons to select a role to be granted
 pub async fn view(bot: &Bot, state: &GrantAccessState, roles: &UserRoles, text: impl Into<String>, moder: &User) -> HandlerResult {
     let _ = state.user.id;
-    let markup = markup(&roles).await?;
+    let markup = markup(&roles, &state.user).await?;
     bot.send_message(moder.id, text)
         .reply_markup(markup)
         .parse_mode(ParseMode::Html)
@@ -135,13 +166,13 @@ pub async fn view(bot: &Bot, state: &GrantAccessState, roles: &UserRoles, text: 
 }
 ///
 /// 
-async fn markup(roles: &UserRoles) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(roles: &UserRoles, to_user: &User) -> Result<InlineKeyboardMarkup, String> {
     let mut buttons: Vec<InlineKeyboardButton> = roles
         .iter()
         .map(|(role_id, role)| {
             InlineKeyboardButton::callback(
                 role.title.clone(),
-                format!("/{}", role_id),
+                format!("/GrantRole/{}:{}", role.role.to_string(), to_user.id),
         )})
         .collect();
     let button_back = InlineKeyboardButton::callback(

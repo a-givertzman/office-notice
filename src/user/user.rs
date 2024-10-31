@@ -43,7 +43,7 @@ impl User {
     }
     ///
     /// 
-    pub fn update(&mut self, other: Self) -> Result<(), String> {
+    pub fn update(&mut self, other: Self) {
         self.id = other.id;
         self.name = other.name;
         self.contact = other.contact;
@@ -51,7 +51,6 @@ impl User {
         self.subscriptions = other.subscriptions;
         self.last_seen = other.last_seen;
         self.role = other.role;
-        Ok(())
     }
     ///
     /// Returns true if `self.role` covers some of `role`
@@ -62,6 +61,14 @@ impl User {
             }
         }
         false
+    }
+    ///
+    /// Adds a role to user
+    pub fn add_role(&mut self, role: UserRole) {
+        self.role.push(role);
+        if let Some(i) = self.role.iter().position(|r| *r == UserRole::Guest) {
+            self.role.remove(i);
+        }
     }
 }
 //

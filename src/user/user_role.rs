@@ -9,23 +9,23 @@ pub type UserRoles = IndexMap<String, UserRoleDb>;
 pub enum UserRole {
     ///
     /// Administrative role, Full access
-    #[serde(alias = "Admin", alias = "admin")]
+    #[serde(alias = "GrantRole/Admin", alias = "Admin", alias = "admin")]
     Admin,
     ///
     /// Moderator role, Allows / Denys New user
-    #[serde(alias = "Moder", alias = "moder")]
+    #[serde(alias = "GrantRole/Moder", alias = "Moder", alias = "moder")]
     Moder,
     ///
     /// Sender role, Can send Notice's
-    #[serde(alias = "Member", alias = "member")]
+    #[serde(alias = "GrantRole/Sender", alias = "Sender", alias = "sender")]
     Sender,
     ///
     /// Member role, Can Subscribe and receive Notice's
-    #[serde(alias = "Member", alias = "member")]
+    #[serde(alias = "GrantRole/Member", alias = "Member", alias = "member")]
     Member,
     ///
     /// Guest role, can request acces from Moderator's
-    #[serde(alias = "Guest", alias = "guest")]
+    #[serde(alias = "GrantRole/Guest", alias = "Guest", alias = "guest")]
     Guest,
 }
 //

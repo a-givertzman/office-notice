@@ -299,8 +299,8 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
         State::GrantAccess(ga_state) => {
             // let user_id = subscribe_state.user_id;
             log::debug!("{}.command | State: {:?}", dbgid, ga_state);
-            dialogue.update(ga_state.prev_state).await?;
-            crate::states::reload(bot.clone(), &msg, dialogue, ga_state.prev_state).await?
+            // dialogue.update(ga_state.prev_state).await?;
+            // crate::states::reload(bot.clone(), &msg, dialogue, ga_state.prev_state).await?
         }
         State::Help(help_state) => {
             log::debug!("{}.command | State: {:?}", dbgid, help_state);
@@ -331,28 +331,13 @@ pub async fn chat_message_handler(bot: Bot, msg: Message) -> HandlerResult {
     }
     Ok(())
 }
-///
-/// Handles command callbacks
-pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: State) -> HandlerResult {
-    let dbgid = "states";
-    let chat_id = ChatId::from(q.from.id);
-    let user = db::user(&chat_id).await?;
-    let user_name = q.from.full_name();
-    // Determine the language of the user
-    let input = q.data.to_owned().unwrap_or_default();
-    log::debug!("{}.callback | State: {:?}, User {} ({}) Input: {}", dbgid, state, user_name, chat_id, input);
+async fn grant_access(dbgid: &str, bot: &Bot, q: &CallbackQuery, dialogue: &MyDialogue, state: &State, input: &str) -> HandlerResult {
     match GrantAccessMenu::parse(&input, 0) {
-        GrantAccessMenu::Role(role) => {
-            match &state {
-                State::GrantAccess(ga_state) => {
-                    log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, role, ga_state.user.name);
-                    let state = GrantAccessState { prev_state: ga_state.prev_state, user: ga_state.user.clone(), role: Some(role) };
-                    crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
-                }
-                _ => {
-                    log::warn!("{}.callback | Grant role Invalid state '{:?}'", dbgid, state);
-                }
-            }
+        GrantAccessMenu::Role((role, chat_id)) => {
+            let to_user = db::user(&chat_id).await?;
+            log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, role, to_user.name);
+            let state = GrantAccessState { prev_state: StartState::default(), user: to_user, role: Some(role) };
+            crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?;
         }
         GrantAccessMenu::Done => {
             let granted_user = match &state {
@@ -370,6 +355,21 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
             log::debug!("{}.callback | Grant role Unknown cmd: {}", dbgid, cmd);
         }
     }
+    Ok(())
+}
+///
+/// Handles command callbacks
+pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: State) -> HandlerResult {
+    let dbgid = "states";
+    let chat_id = ChatId::from(q.from.id);
+    let user = db::user(&chat_id).await?;
+    let user_name = q.from.full_name();
+    // Determine the language of the user
+    let input = q.data.to_owned().unwrap_or_default();
+    log::debug!("{}.callback | State: {:?}, User {} ({}) Input: {}", dbgid, state, user_name, chat_id, input);
+    if let Ok(()) = grant_access(&dbgid, &bot, &q, &dialogue, &state, &input).await {
+        return Ok(());
+    }
     match state {
         State::Start(state) => {
             log::debug!("{}.callback | State::Start > state: {:#?}", dbgid, state);
@@ -381,19 +381,20 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         }
         State::GrantAccess(state) => {
             log::debug!("{}.callback | State::GrantAccess > state: {:#?}", dbgid, state);
-            log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, state.role, state.user.name);
-            match GrantAccessMenu::parse(&input, 0) {
-                GrantAccessMenu::Role(role) => {
-                    let state = GrantAccessState { prev_state: state.prev_state, user: state.user.clone(), role: Some(role) };
-                    crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
-                }
-                GrantAccessMenu::Done => {
-                    let text = format!("Canceled role granting for user '{}'", state.user.name);
-                    dialogue.update(state.prev_state).await?;
-                    edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
-                }
-                GrantAccessMenu::Unknown(_) => {}
-            }
+            grant_access(dbgid, &bot, &q, &dialogue, &State::GrantAccess(state), &input).await?
+            // log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, state.role, state.user.name);
+            // match GrantAccessMenu::parse(&input, 0) {
+            //     GrantAccessMenu::Role((role, chat_id)) => {
+            //         let state = GrantAccessState { prev_state: state.prev_state, user: state.user.clone(), role: Some(role) };
+            //         crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
+            //     }
+            //     GrantAccessMenu::Done => {
+            //         let text = format!("Canceled role granting for user '{}'", state.user.name);
+            //         dialogue.update(state.prev_state).await?;
+            //         edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
+            //     }
+            //     GrantAccessMenu::Unknown(_) => {}
+            // }
         }
         State::Main(state) => {
             let input = q.data.to_owned().unwrap_or_default();
