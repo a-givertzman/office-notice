@@ -9,18 +9,19 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
 use arraylib::iter::IteratorExt;
-use crate::{states::*, user::{user::User, user_role::UserRole}};
+use crate::{kernel::error::HandlerResult, user::{user::User, user_role::UserRole}};
 use crate::db as db;
 use crate::loc::*;
 ///
 /// Main menu
 #[derive(Debug, Clone, PartialEq)]
 pub enum MainMenu {
-   Links(String),      // Links menu
-   Notice,     // Notice menu
-   Subscribe,  // subscribe to receive notice
+   Links(String),   // Links menu
+   Notice,          // Notice menu
+   Subscribe,       // subscribe to receive notice
+   RequestAccess,   // User request access
    Help,
-   Done,       // Exit menu
+   Done,            // Exit menu
    Unknown,
 }
 //
@@ -31,6 +32,7 @@ impl MainMenu {
             "/notice" | "/Notice" => Self::Notice,
             "/links" | "/Links" => Self::Links(s.to_owned()),
             "/subscribe" | "/Subscribe" => Self::Subscribe,
+            "/requestaccess" | "/RequestAccess" => Self::RequestAccess,
             "/help" | "/Help" => Self::Help,
             "/done" | "/Done" => Self::Done,
             "/back" | "/Back" => Self::Done,
@@ -66,7 +68,7 @@ pub async fn reload(bot: &Bot, msg: &Message, user: &User) -> HandlerResult {
     let menu =  db::menu().await?;
     let markup = markup(user, &menu).await?;
     let text = "Main menu";
-    crate::message::edit_message_text_or_send(bot, msg, &markup, text).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, text).await
 }
 ///
 /// Exits a MainMenu
@@ -85,6 +87,9 @@ async fn markup(user: &User, menu: &IndexMap<String, MenuItem>) -> Result<Inline
     let buttons: Vec<InlineKeyboardButton> = menu.iter()
         .filter(|(key, _menu_item)| {
             match key.as_str() {
+                "RequestAccess" => {
+                    user.has_role(&[UserRole::Guest])
+                }
                 "Links" => {
                     user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member])
                 }

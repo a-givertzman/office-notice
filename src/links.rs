@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, UserId}};
-use crate::{db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}};
+use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue}};
 ///
 /// Links menu
 #[derive(Debug, Clone, PartialEq)]
@@ -45,12 +45,12 @@ pub struct LinksState {
     // pub prev_level: Option<String>,
     pub level: String,
     pub child: IndexMap<String, Links>,
-    pub user_id: UserId,
+    pub chat_id: ChatId,
 }
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: LinksState) -> HandlerResult {
-    let user_id = state.user_id;
+    let user_id = state.chat_id;
     log::debug!("links.enter | state: {:#?}", state);
     let links =  match state.child.get(&state.level) {
         Some(links) => links.to_owned(),
@@ -66,10 +66,10 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, mut state: Link
 ///
 /// 
 pub async fn view(bot: &Bot, msg: &Message, state: LinksState, links: Links) -> HandlerResult {
-    let user_id = state.user_id;
+    let user_id = state.chat_id;
     let markup = markup(&links, user_id).await?;
     let text = links.title.unwrap_or(format!("Useful links"));
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text).await
     // bot.edit_message_text(msg.chat.id, msg.id, text)
     //     // .edit_message_media(user_id, message_id, media)
     //     .reply_markup(markup)
@@ -79,7 +79,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: LinksState, links: Links) -> 
 }
 ///
 /// 
-async fn markup(links: &Links, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(links: &Links, user_id: ChatId) -> Result<InlineKeyboardMarkup, String> {
     let _ = user_id;
     let mut buttons: Vec<InlineKeyboardButton> = links.links
         .iter()

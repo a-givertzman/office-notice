@@ -1,5 +1,4 @@
 mod config;
-// mod general;
 mod message;
 mod loc;
 mod links;
@@ -11,6 +10,7 @@ mod db;
 mod user;
 mod states;
 mod help;
+mod kernel;
 //
 use std::{env, fmt::Debug, process::Command, sync::Arc};
 use futures::future::BoxFuture;
@@ -25,7 +25,7 @@ where
     E: Debug,
 {
     fn handle_error(self: Arc<Self>, error: E) -> BoxFuture<'static, ()> {
-        let text = format!("main::handle_error: {:?}", error);
+        let text = format!("main::handle_error: {:#?}", error);
         log::error!("{}", text);
         let fut = async move {
             log::info!("main::Unable to send message to the service chat");
@@ -52,7 +52,6 @@ async fn default_handler(upd: Arc<Update>) {
         }
         _ => {
             log::warn!("main | Unhandled update: {:?}", upd);
-            // environment::log(&format!("main::Unhandled update: {:?}", upd)).await;
         }
     }
 }

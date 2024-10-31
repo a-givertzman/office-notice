@@ -42,6 +42,17 @@ impl User {
         }
     }
     ///
+    /// 
+    pub fn update(&mut self, other: Self) {
+        self.id = other.id;
+        self.name = other.name;
+        self.contact = other.contact;
+        self.address = other.address;
+        self.subscriptions = other.subscriptions;
+        self.last_seen = other.last_seen;
+        self.role = other.role;
+    }
+    ///
     /// Returns true if `self.role` covers some of `role`
     pub fn has_role(&self, roles: &[UserRole]) -> bool {
         for role in &self.role {
@@ -51,19 +62,14 @@ impl User {
         }
         false
     }
-}
-//
-//
-impl Default for User {
-    fn default() -> Self {
-        Self { 
-            id: panic!("User.default | field id must be defined"),
-            name: panic!("User.default | field id must be defined"),
-            contact: Default::default(),
-            address: Default::default(),
-            subscriptions: Default::default(),
-            last_seen: Default::default(),
-            role: vec![UserRole::Guest],
+    ///
+    /// Adds a role to user
+    pub fn add_role(&mut self, role: UserRole) {
+        if !self.role.contains(&role) {
+            self.role.push(role);
+        }
+        if let Some(i) = self.role.iter().position(|r| *r == UserRole::Guest) {
+            self.role.remove(i);
         }
     }
 }

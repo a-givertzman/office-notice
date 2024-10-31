@@ -1,0 +1,22 @@
+{
+    "admin": {
+        "title": "Admin (Uniq full access)",
+        "role": "GrantRole/Admin"
+    },
+    "moder": {
+        "title": "Moder (Grant, Notice, Receive)",
+        "role": "GrantRole/Moder"
+    },
+    "sender": {
+        "title": "Sender (Notice, Receive)",
+        "role": "GrantRole/Sender"
+    },
+    "member": {
+        "title": "Member (Receive)",
+        "role": "GrantRole/Member"
+    },
+    "guest": {
+        "title": "Guest (Request access)",
+        "role": "GrantRole/Guest"
+    }
+}

@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup, User, UserId}};
 use crate::{
-    db, loc::{loc, LocaleTag}, states::{HandlerResult, MainState, MyDialogue}, subscription::Subscriptions,
+    db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue}, subscription::Subscriptions
 };
 ///
 /// Subscribe menu
@@ -31,20 +31,20 @@ impl SubscribeMenu {
 pub struct SubscribeState {
     pub prev_state: MainState,  // Where to go on Back btn
     pub group: String,          // Group id to be noticed
-    pub user_id: UserId,        // User id doing notice
+    pub chat_id: ChatId,        // User id doing notice
     pub user: User,
 }
 //
 //
 impl Default for SubscribeState {
     fn default() -> Self {
-        Self { prev_state: MainState::default(), group: String::new(), user_id: UserId(0), user: User { id: UserId(0), is_bot: false, first_name: String::new(), last_name: None, username: None, language_code: None, is_premium: false, added_to_attachment_menu: false } }
+        Self { prev_state: MainState::default(), group: String::new(), chat_id: ChatId(0), user: User { id: UserId(0), is_bot: false, first_name: String::new(), last_name: None, username: None, language_code: None, is_premium: false, added_to_attachment_menu: false } }
     }
 }
 ///
 ///  
 pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: SubscribeState) -> HandlerResult {
-    let user_id = state.user_id;
+    let user_id = state.chat_id;
     let user_name = state.user.username.clone().unwrap_or(state.user.full_name());
     log::debug!("subscribe.enter | state: {:#?}", state);
     let mut subscriptions =  match db::subscriptions().await {
@@ -66,7 +66,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: Subscrib
 }
 ///
 /// 
-pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: UserId, user_name: &str) -> HandlerResult {
+pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: ChatId, user_name: &str) -> HandlerResult {
     if let Some(group) = subscriptions.get_mut(group) {
         let user_id_str = &user_id.to_string();
         match group.members.get(user_id_str) {
@@ -94,9 +94,9 @@ pub async fn subscribe(subscriptions: &mut Subscriptions, group: &str, user_id: 
 ///
 /// 
 pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Subscriptions, text: impl Into<String>) -> HandlerResult {
-    let user_id = state.user_id;
+    let user_id = state.chat_id;
     let markup = markup(&groups, user_id).await?;
-    crate::message::edit_message_text_or_send(bot, msg, &markup, &text.into()).await
+    crate::message::edit_markup_message_or_send(bot, msg, &markup, &text.into()).await
     // bot.edit_message_text(msg.chat.id, msg.id, text)
     //     // .edit_message_media(user_id, message_id, media)
     //     .reply_markup(markup)
@@ -106,7 +106,7 @@ pub async fn view(bot: &Bot, msg: &Message, state: &SubscribeState, groups: &Sub
 }
 ///
 /// 
-async fn markup(groups: &Subscriptions, user_id: UserId) -> Result<InlineKeyboardMarkup, String> {
+async fn markup(groups: &Subscriptions, user_id: ChatId) -> Result<InlineKeyboardMarkup, String> {
     let _ = user_id;
     let mut buttons: Vec<InlineKeyboardButton> = groups
         .iter()
