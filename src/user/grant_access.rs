@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use teloxide::{payloads::SendMessageSetters, prelude::Requester, types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, ParseMode}, Bot};
-use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MainState, MyDialogue, StartState, State}};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, states::{MyDialogue, StartState, State}};
 use super::{user::User, user_role::{UserRole, UserRoles}};
 ///
 /// RequestAccess menu
@@ -146,7 +146,14 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: GrantAcc
                     // dialogue.update(state.clone()).await?;
                     view(&bot, &state, &roles, text, moder).await?;
                 }
-                None => return Err(format!("request_access.enter | No moderators found to grant access for User '{}'", user_name).into()),
+                None => {
+                    let text = format!("{}, \nNo moderators found to grant access for you. \n\nPease refer to person sharted the bot with you", state.user.name);
+                    bot.send_message(state.user.id, text)
+                        .parse_mode(ParseMode::Html)
+                        .await?;
+            
+                    return Err(format!("request_access.enter | No moderators found to grant access for User '{}'", user_name).into())
+                }
             }
         
         }

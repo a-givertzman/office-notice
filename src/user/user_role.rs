@@ -45,8 +45,13 @@ impl ToString for UserRole {
 /// 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserRoleDb {
-   #[serde(skip_serializing_if = "Option::is_none")]
-   pub id: Option<String>,
-   pub title: String,
-   pub role: UserRole,
+    #[serde(default = "default_hidden")]
+    pub hidden: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub title: String,
+    pub role: UserRole,
+}
+fn default_hidden() -> bool {
+    true
 }

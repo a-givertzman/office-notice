@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use teloxide::types::ChatId;
-use crate::{links::Links, menu::MenuItem, subscription::{Subscription, Subscriptions}, user::{user::User, user_role::{UserRole, UserRoleDb, UserRoles}}};
+use crate::{links::Links, menu::MenuItem, subscribe::subscription::{Subscription, Subscriptions}, user::{user::User, user_role::{UserRole, UserRoleDb, UserRoles}}};
 ///
 /// 
 pub async fn menu() -> Result<IndexMap<String, MenuItem>, String> {

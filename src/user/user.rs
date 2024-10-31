@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use crate::subscription::Subscription;
+use crate::subscribe::subscription::Subscription;
 use super::user_role::UserRole;
 ///
 /// User, representing telegram user, subscribed on the notices

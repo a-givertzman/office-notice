@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::User};
 use tokio::time::sleep;
 use crate::{
-    db, help::HelpState, kernel::error::{HandlerResult, StrError}, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::{
+    db, help::HelpState, kernel::error::{HandlerResult, StrError}, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::subscribe::{SubscribeMenu, SubscribeState}, user::{
         grant_access::{GrantAccessMenu, GrantAccessState}, request_access::RequestAccessState, user_role::UserRole
     }, BOT_NAME
 };
@@ -243,7 +243,7 @@ pub async fn command(bot: Bot, msg: Message, dialogue: MyDialogue, state: State)
                 }
                 MainMenu::Subscribe => {
                     if user.has_role(&[UserRole::Admin, UserRole::Moder, UserRole::Sender, UserRole::Member]) {
-                        crate::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, chat_id: user_id, ..Default::default() }).await?
+                        crate::subscribe::subscribe::enter(bot, msg, dialogue, SubscribeState { prev_state: main_state, chat_id: user_id, ..Default::default() }).await?
                     } else {
                         send_message_with_header(
                             &bot, chat_id, BOT_NAME,
@@ -410,7 +410,7 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                 }
                 MainMenu::Subscribe => {
                     let state = SubscribeState { prev_state: state, chat_id, ..Default::default() };
-                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                    crate::subscribe::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 MainMenu::Help => {
                     let state = HelpState { prev_state: state, user };
@@ -480,11 +480,11 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         chat_id: state.chat_id,
                         user: q.from.clone()
                     };
-                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                    crate::subscribe::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 SubscribeMenu::Unknown(text) => {
                     log::debug!("{}.callback | State::Subscribe > Unknown command received: '{}'", dbgid, text);
-                    crate::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                    crate::subscribe::subscribe::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
                 }
                 SubscribeMenu::Done => crate::states::reload(bot.clone(), q.regular_message().unwrap(), dialogue, state.prev_state).await?,
             }            

@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use teloxide::{prelude::*, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
-use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, message::send_message_with_header, states::{MainState, MyDialogue}, subscription::Subscriptions};
+use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, message::send_message_with_header, states::{MainState, MyDialogue}, subscribe::subscription::Subscriptions};
 ///
 /// Notice menu
 #[derive(Debug, Clone, PartialEq)]

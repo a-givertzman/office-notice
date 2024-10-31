@@ -1,9 +1,11 @@
 {
     "admin": {
+        "hidden": true,
         "title": "Admin (Uniq full access)",
         "role": "GrantRole/Admin"
     },
     "moder": {
+        "hidden": true,
         "title": "Moder (Grant, Notice, Receive)",
         "role": "GrantRole/Moder"
     },
@@ -16,6 +18,7 @@
         "role": "GrantRole/Member"
     },
     "guest": {
+        "hidden": true,
         "title": "Guest (Request access)",
         "role": "GrantRole/Guest"
     }
