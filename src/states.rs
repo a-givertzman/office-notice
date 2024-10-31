@@ -2,11 +2,11 @@ use std::time::Duration;
 use chrono::Utc;
 use derive_more::From;
 use indexmap::IndexMap;
-use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::{ParseMode, User}};
+use teloxide::{dispatching::{dialogue::{self, InMemStorage}, UpdateFilterExt, UpdateHandler }, prelude::*, types::User};
 use tokio::time::sleep;
 use crate::{
-    db, help::HelpState, kernel::error::HandlerResult, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_markup_message_or_send, edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::{
-        grant_access::{GrantAccessMenu, GrantAccessState}, request_access::{RequestAccessMenu, RequestAccessState}, user_role::UserRole
+    db, help::HelpState, kernel::error::HandlerResult, links::{LinksMenu, LinksState}, menu::{self, MainMenu}, message::{edit_text_message_or_send, send_message_with_header}, notice::{self, NoticeMenu, NoticeState}, subscribe::{SubscribeMenu, SubscribeState}, user::{
+        grant_access::{GrantAccessMenu, GrantAccessState}, request_access::RequestAccessState, user_role::UserRole
     }, BOT_NAME
 };
 use crate::loc::*;

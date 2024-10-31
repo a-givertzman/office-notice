@@ -16,12 +16,12 @@ use crate::loc::*;
 /// Main menu
 #[derive(Debug, Clone, PartialEq)]
 pub enum MainMenu {
-   Links(String),      // Links menu
-   Notice,     // Notice menu
-   Subscribe,  // subscribe to receive notice
+   Links(String),   // Links menu
+   Notice,          // Notice menu
+   Subscribe,       // subscribe to receive notice
    RequestAccess,   // User request access
    Help,
-   Done,       // Exit menu
+   Done,            // Exit menu
    Unknown,
 }
 //
