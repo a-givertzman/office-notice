@@ -25,8 +25,8 @@ impl GrantAccessMenu {
                         let role: UserRole = role;
                         Self::Role(role)
                     }
-                    Err(err) => {
-                        log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
+                    Err(_err) => {
+                        // log::error!("GrantAccessMenu.parse | Unknown Role: '{:?}', \n\t Parsing error: {:#?}", input, err);
                         Self::Unknown(s.to_owned())
                     }
                 }

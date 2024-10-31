@@ -356,7 +356,10 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         }
         GrantAccessMenu::Done => {
             let granted_user = match &state {
-                State::GrantAccess(grant_access_state) => grant_access_state.user.name.clone(),
+                State::GrantAccess(ga_state) => {
+                    dialogue.update(ga_state.prev_state).await?;
+                    ga_state.user.name.clone()
+                },
                 _ => "-".to_owned(),
             };
             let text = format!("Canceled role granting for user '{}'", granted_user);
@@ -375,8 +378,19 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
         }
         State::GrantAccess(state) => {
             log::debug!("{}.callback | State::GrantAccess > state: {:#?}", dbgid, state);
-            log::debug!("{}.callback | State::GrantAccess > Not implemented, return", dbgid);
-            // handle_grant_access_callback(dbgid, bot, q, dialogue, state, input, user).await?;
+            log::debug!("{}.callback | Granting role '{:?}' to user {}", dbgid, state.role, state.user.name);
+            match GrantAccessMenu::parse(&input, 0) {
+                GrantAccessMenu::Role(role) => {
+                    let state = GrantAccessState { prev_state: state.prev_state, user: state.user.clone(), role: Some(role) };
+                    crate::user::grant_access::enter(bot.clone(), q.regular_message().unwrap().to_owned(), dialogue.clone(), state).await?
+                }
+                GrantAccessMenu::Done => {
+                    let text = format!("Canceled role granting for user '{}'", state.user.name);
+                    dialogue.update(state.prev_state).await?;
+                    edit_text_message_or_send(&bot, q.regular_message().unwrap(), &text).await?;
+                }
+                GrantAccessMenu::Unknown(_) => {}
+            }
         }
         State::Main(state) => {
             let input = q.data.to_owned().unwrap_or_default();

@@ -86,6 +86,7 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: RequestA
     //     }
     // }).collect();
     let state = GrantAccessState { prev_state: MainState::default(), user: state.user, role: None };
+    dialogue.update(state.prev_state).await?;
     grant_access::enter(bot, msg, dialogue, state).await?;
     Ok(())
 }
