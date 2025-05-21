@@ -174,7 +174,6 @@ pub async fn enter(bot: &Bot, msg: &Message, dialogue: MyDialogue, state: MainSt
     menu::enter(bot, msg, &user).await?;
     Ok(())
 }
-
 ///
 /// 
 pub async fn reload(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
@@ -183,6 +182,8 @@ pub async fn reload(bot: Bot, msg: &Message, dialogue: MyDialogue, state: MainSt
     menu::reload(&bot, msg, &user).await?;
     Ok(())
 }
+///
+/// 
 pub async fn exit(bot: Bot, msg: Message, dialogue: MyDialogue, state: MainState) -> HandlerResult {
     dialogue.update(state.prev_state).await?;
     let user = db::user(&msg.chat.id).await?;
@@ -457,6 +458,12 @@ pub async fn callback(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, state: S
                         chat_id: state.chat_id,
                     };
                     crate::notice::enter(bot, q.regular_message().unwrap().to_owned(), dialogue, state).await?
+                }
+                NoticeMenu::DeleteLast(_) => {
+                    if !state.group.is_empty() {
+                        log::debug!("{}.callback | State::Notice > DeleteLast Will delete last send to the: '{}' group", dbgid, state.group);
+                        crate::notice::delete_last(bot, q.regular_message().cloned(), dialogue, state).await?
+                    }
                 }
                 NoticeMenu::Unknown(text) => {
                     log::debug!("{}.callback | State::Notice > Unknown command received: '{}'", dbgid, text);
