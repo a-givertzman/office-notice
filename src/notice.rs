@@ -6,6 +6,7 @@ use crate::{db, kernel::error::HandlerResult, loc::{loc, LocaleTag}, message::se
 #[derive(Debug, Clone, PartialEq)]
 pub enum NoticeMenu {
    Group(String),   // Selected group to be noticed
+   DeleteLast(String),   // Delete last sent message
    Unknown(String), // Unknown command received
    Done,            // Exit menu
 }
@@ -59,6 +60,13 @@ pub async fn enter(bot: Bot, msg: Message, dialogue: MyDialogue, state: NoticeSt
         dialogue.update(state.clone()).await?;
         view(&bot, &msg, &state, &groups, text, None).await?;
     }
+    Ok(())
+}
+///
+/// Deleting last message
+/// - A message can only be deleted if it was sent less than 48 hours ago
+/// - A dice message in a private chat can only be deleted if it was sent more than 24 hours ago
+pub async fn delete_last(bot: Bot, msg: Option<Message>, dialogue: MyDialogue, state: NoticeState) -> HandlerResult {
     Ok(())
 }
 ///
@@ -125,6 +133,10 @@ async fn markup(groups: &Subscriptions, is_message: Option<()>) -> Result<Inline
             )})
             .collect(),
     };
+    let button_back = InlineKeyboardButton::callback(
+        loc("Delete last message"), // "⏪Back"
+        format!("/delete-last")
+    );
     let button_back = InlineKeyboardButton::callback(
         loc("⏪Back"), // "⏪Back"
         format!("/back")

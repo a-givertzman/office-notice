@@ -12,6 +12,7 @@ mod help;
 mod kernel;
 //
 use std::{env, fmt::Debug, process::Command, sync::Arc};
+use debugging::session::debug_session::{Backtrace, DebugSession, LogLevel};
 use futures::future::BoxFuture;
 use config::AppConfig;
 use states::State;
@@ -62,13 +63,14 @@ static BOT_NAME: &str = "TKZ Office Notice bot";
 #[tokio::main]
 async fn main() {
     clear_console();
-    env::set_var("RUST_LOG", "debug");
-    env::set_var("RUST_BACKTRACE", "1");
+    DebugSession::init(LogLevel::Debug, Backtrace::Short);
     pretty_env_logger::init();
     log::info!("Starting dialogue bot...");
     let config = AppConfig::read("./config.yaml");
     log::info!("config: {:#?}", config);
-    env::set_var("TELOXIDE_TOKEN", config.bot.connection.token);
+    unsafe {
+        env::set_var("TELOXIDE_TOKEN", config.bot.connection.token);
+    }
     let bot = Bot::from_env();
     Dispatcher::builder(bot.clone(), states::schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
